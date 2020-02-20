@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -21,9 +22,15 @@ namespace Vice
             Console.WriteLine("App Started");
             IconSetup();
 
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
             MainWindow = new MainWindow();
             MainVM = new MainVM();
+        }
 
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            File.AppendAllText("C:\\Users\\laure\\Dropbox\\Vice Link\\ViceLog.txt", DateTime.UtcNow + " - Fatal Error: \n" + (e.ExceptionObject as Exception) + Environment.NewLine);
         }
 
         private new MainWindow MainWindow;

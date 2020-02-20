@@ -125,6 +125,23 @@ namespace Vice
             }
         }
 
+        private int ReturnNumber(string no)
+        {
+            int output = 0;
+            try
+            {
+                output = int.Parse(no);
+            }
+            catch
+            {
+                output = Statics.NumList.IndexOf(no.ToLower());
+                if (output < 0)
+                    output = 0;
+            }
+
+            return output;
+        }
+
         #endregion Methods
 
         #region Stem Commands
@@ -135,18 +152,38 @@ namespace Vice
             try
             {
                 int Percentage = 0;
+                CoreAudioDevice defaultPlaybackDevice = new CoreAudioController().DefaultPlaybackDevice;
 
                 if (Value == "Mute")
                     Percentage = 0;
+                else if (Value.Split(' ')[0] == "Down")
+                {
+                    double CheckVal = defaultPlaybackDevice.Volume - ReturnNumber(Value.Split(' ')[1]);
+                    if (CheckVal < 0)
+                        CheckVal = 0;
+
+                    defaultPlaybackDevice.Volume = CheckVal;
+                    return;
+                }
+                else if (Value.Split(' ')[0] == "Up")
+                {
+                    double CheckVal = defaultPlaybackDevice.Volume + ReturnNumber(Value.Split(' ')[1]);
+                    if (CheckVal > 100)
+                        CheckVal = 0;
+
+                    defaultPlaybackDevice.Volume = CheckVal;
+                    return;
+                }
                 else
                 {
-                    Percentage = int.Parse(Value);
+                    Percentage = ReturnNumber(Value);
 
                     if (Percentage > 100)
                         Percentage = 100;
+                    else if (Percentage < 0)
+                        Percentage = 0;
                 }
 
-                CoreAudioDevice defaultPlaybackDevice = new CoreAudioController().DefaultPlaybackDevice;
                 defaultPlaybackDevice.Volume = Percentage;
             }
             catch (Exception ex)
