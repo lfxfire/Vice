@@ -28,20 +28,42 @@ namespace Vice
         public const int KEYEVENTF_EXTENDEDKEY = 0x0001; //Key down flag
         public const int KEYEVENTF_KEYUP = 0x0002; //Key up flag
 
+
         public MainVM()
         {
-            MainThread = new Thread(new ThreadStart(Run));
-            MainThread.Start();
+            StartThreadCom();
         }
 
         #region Properties
+
+        private ManualResetEvent ExitWait = new ManualResetEvent(true);
+        private ManualResetEvent ColourWait = new ManualResetEvent(true);
 
         Thread MainThread;
         
         private bool LoopKiller = false;
 
+        public bool Running
+        {
+            get
+            {
+                if (MainThread != null)
+                    return true;
+                else
+                    return false;
+            }
+        }
+
+        private string _activeColour = "Red";
+        public string ActiveColour
+        {
+            get { return _activeColour; }
+            set { _activeColour = value; NotifyPropertyChanged(); }
+        }
+
         // in millseconds
-        int Inverval = 500;
+        int Inverval = 400;
+        int LightInterval = 200;
 
         string CommandStem = "C:\\Users\\laure\\DropBox\\Vice Link\\CommandStem.txt";
         string LogLocation = "C:\\Users\\laure\\Dropbox\\Vice Link\\ViceLog.txt";
@@ -61,6 +83,9 @@ namespace Vice
 
         private void Run()
         {
+            ColourWait.Set();
+            ActiveColour = "Green";
+
             while (!LoopKiller)
             {
                 Console.WriteLine("Checked");
@@ -69,6 +94,9 @@ namespace Vice
                 {
                     if (File.Exists(CommandStem))
                     {
+                        ActiveColour = "Green";
+                        //ColourChangeCreate("Blue");
+
                         CommandRead = DateTime.UtcNow;
 
                         string[] ReadLines = File.ReadAllLines(CommandStem);
@@ -98,16 +126,40 @@ namespace Vice
                         else if (TestWord == "Media Control")
                             MediaCommand(ValueWord);
 
+                        Thread.Sleep(LightInterval);
                     }
+                    else
+                    {
+                        ActiveColour = "LightGreen";
+                        Thread.Sleep(LightInterval);
+                    }
+                    //ColourChangeCreate("LightGreen");
                 }
                 catch (Exception ex)
                 {
                     File.AppendAllText(LogLocation, ex.ToString());
-
                 }
 
+                ActiveColour = "Green";
                 Thread.Sleep(Inverval);
             }
+
+            ExitWait.Set();
+        }
+
+        private void ColourChangeCreate(string colour)
+        {
+            Thread temp = new Thread(() => ColourChange(colour));
+            temp.Start();
+        }
+
+        private void ColourChange(string colour)
+        {
+            ColourWait.Reset();
+            ActiveColour = colour;
+            Thread.Sleep(200);
+            ActiveColour = "Green";
+            ColourWait.Set();
         }
 
         private void WipeStem(string Command = "")
@@ -254,7 +306,20 @@ namespace Vice
 
         public void StopThreadCom()
         {
-            LoopKiller = !LoopKiller;
+            LoopKiller = true;
+            ExitWait.WaitOne(200);
+            MainThread = null;
+            NotifyPropertyChanged("Running");
+            ActiveColour = "Red";
+        }
+
+        public void StartThreadCom()
+        {
+            LoopKiller = false;
+            ExitWait.Reset();
+            MainThread = new Thread(new ThreadStart(Run));
+            MainThread.Start();
+            NotifyPropertyChanged("Running");
         }
 
         #endregion Command Methods
@@ -271,6 +336,19 @@ namespace Vice
                     _stopThread = new RelayCommand(param => StopThreadCom());
                 }
                 return _stopThread;
+            }
+        }
+
+        private RelayCommand _startThread;
+        public ICommand StartThread
+        {
+            get
+            {
+                if (_startThread == null)
+                {
+                    _startThread = new RelayCommand(param => StartThreadCom());
+                }
+                return _startThread;
             }
         }
 
