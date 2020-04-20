@@ -8,6 +8,7 @@ using Vice.Resources;
 using System.Threading;
 using System.Windows.Input;
 using System.IO;
+using System.IO.Ports;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using AudioSwitcher.AudioApi.CoreAudio;
@@ -137,6 +138,7 @@ namespace Vice
                 }
                 catch (Exception ex)
                 {
+                    File.Delete(CommandStem);
                     File.AppendAllText(LogLocation, ex.ToString());
                 }
 
@@ -162,6 +164,7 @@ namespace Vice
             ColourWait.Set();
         }
 
+        // Runs at the end of the command - removes the document and writes to log
         private void WipeStem(string Command = "")
         {
             //File.WriteAllText(CommandStem, "Waiting");
@@ -177,6 +180,7 @@ namespace Vice
             }
         }
 
+        // returns a number if 
         private int ReturnNumber(string no)
         {
             int output = 0;
@@ -198,7 +202,7 @@ namespace Vice
 
         #region Stem Commands
 
-        private void VolumeCommand(string Value = "0" )
+        private void VolumeCommand(string Value = "0" )        
         {
             WipeStem("Volume Control " + Value);
             try
@@ -322,6 +326,26 @@ namespace Vice
             NotifyPropertyChanged("Running");
         }
 
+        public void SendCommandCom()
+        {
+            try
+            {
+                if (!ArdPort.IsOpen)
+                    ArdPort.Open();
+
+                string[] Liststrings = SerialPort.GetPortNames();
+                ArdPort.Handshake = Handshake.None;
+                ArdPort.Write("com");
+                ArdPort.Close();
+            }
+            catch (Exception ex)
+            {
+                 
+            }
+        }
+
+        static SerialPort ArdPort = new SerialPort("COM3", 9600, Parity.None, 8, StopBits.One);
+
         #endregion Command Methods
 
         #region Commands
@@ -349,6 +373,19 @@ namespace Vice
                     _startThread = new RelayCommand(param => StartThreadCom());
                 }
                 return _startThread;
+            }
+        }
+
+        private RelayCommand _sendCommand;
+        public ICommand SendCommand
+        {
+            get
+            {
+                if (_sendCommand == null)
+                {
+                    _sendCommand = new RelayCommand(param => SendCommandCom());
+                }
+                return _sendCommand;
             }
         }
 

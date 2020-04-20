@@ -44,6 +44,7 @@ namespace Vice
             NotifyIcon.Visible = false;
         }
 
+        // Sets the Docker Icon up
         private void IconSetup()
         {
             NotifyIcon.Visible = true;
