@@ -26,9 +26,10 @@ namespace Vice
         public const int VK_MEDIA_NEXT_TRACK = 0xB0;
         public const int VK_MEDIA_PLAY_PAUSE = 0xB3;
         public const int VK_MEDIA_PREV_TRACK = 0xB1;
+        public const int Right_Arrow = 0x27;
+        public const int Left_Arrow = 0x25;
         public const int KEYEVENTF_EXTENDEDKEY = 0x0001; //Key down flag
         public const int KEYEVENTF_KEYUP = 0x0002; //Key up flag
-
 
         public MainVM()
         {
@@ -104,9 +105,13 @@ namespace Vice
 
                         string TestWord = ReadLines[0];
                         string ValueWord = "";
+                        string SecondValueWord = "";
 
+                        // if attached parameter, sets from additional line, and for 3rd line
                         if (ReadLines.Length > 1)
-                            ValueWord = ReadLines[1];
+                            ValueWord = ReadLines[1];                        
+                        if (ReadLines.Length > 2)
+                            SecondValueWord = ReadLines[2];
 
                         if (TestWord == "Test")
                             TestCommand();
@@ -126,6 +131,10 @@ namespace Vice
                             VolumeCommand(ValueWord);
                         else if (TestWord == "Media Control")
                             MediaCommand(ValueWord);
+
+                        // Control Options
+                        else if (TestWord == "Type")
+                            TypeCommand(ValueWord);
 
                         Thread.Sleep(LightInterval);
                     }
@@ -202,7 +211,8 @@ namespace Vice
 
         #region Stem Commands
 
-        private void VolumeCommand(string Value = "0" )        
+        // sets the volume
+        private void VolumeCommand(string Value = "0" )
         {
             WipeStem("Volume Control " + Value);
             try
@@ -250,6 +260,7 @@ namespace Vice
 
         }
 
+        // Controls the music playing
         private void MediaCommand(string com)
         {
             WipeStem("Media Control " + com);
@@ -261,8 +272,10 @@ namespace Vice
             }
             else if (com == "Previous")
             {
-                keybd_event(VK_MEDIA_NEXT_TRACK, 0, KEYEVENTF_EXTENDEDKEY, IntPtr.Zero);
-                keybd_event(VK_MEDIA_NEXT_TRACK, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+                keybd_event(VK_MEDIA_PREV_TRACK, 0, KEYEVENTF_EXTENDEDKEY, IntPtr.Zero);
+                keybd_event(VK_MEDIA_PREV_TRACK, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+                keybd_event(VK_MEDIA_PREV_TRACK, 0, KEYEVENTF_EXTENDEDKEY, IntPtr.Zero);
+                keybd_event(VK_MEDIA_PREV_TRACK, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
             }
             else if (com == "Play/Pause")
             {
@@ -302,6 +315,62 @@ namespace Vice
         private void TestCommand()
         {
             WipeStem("Test");
+        }
+
+        // Types the command word
+        private void TypeCommand(string setting)
+        {
+            WipeStem("Type Control " + setting);
+
+            // Sets the word variables
+            string DeciderWord = setting.Split(' ')[0];
+            string ControlWord = "";
+            bool firstRun = true;
+
+            if (setting.Split(' ').Count() == 2)
+            {
+                ControlWord = setting.Split(' ')[1];
+            }
+            else if (setting.Split(' ').Count() > 2)
+            {
+                foreach (string x in setting.Split(' '))
+                {
+                    if (!firstRun)
+                        ControlWord = ControlWord + x + " ";
+                    else
+                        firstRun = false;
+
+                }
+            }
+
+            if (DeciderWord == "Left")
+            {
+                for (int x = ReturnNumber(ControlWord); x > 0; x--)
+                {
+                    keybd_event(Left_Arrow, 0, KEYEVENTF_EXTENDEDKEY, IntPtr.Zero);
+                    keybd_event(Left_Arrow, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+                    Thread.Sleep(20);
+                }
+            }
+            else if (DeciderWord == "Right")
+            {
+                for (int x = ReturnNumber(ControlWord); x > 0; x--)
+                {
+                    keybd_event(Right_Arrow, 0, KEYEVENTF_EXTENDEDKEY, IntPtr.Zero);
+                    keybd_event(Right_Arrow, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+                    Thread.Sleep(20);
+                }
+            }
+            else if (DeciderWord == "Type")
+            {
+                foreach (char x in ControlWord.ToUpper()) 
+                {                    
+                    byte keypress = (byte)x;
+                    keybd_event(keypress, 0, KEYEVENTF_EXTENDEDKEY, IntPtr.Zero);
+                    keybd_event(keypress, 0, KEYEVENTF_KEYUP, IntPtr.Zero);
+                    Thread.Sleep(10);
+                }
+            }
         }
 
         #endregion Stem Commands
