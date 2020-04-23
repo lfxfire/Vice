@@ -18,6 +18,8 @@ namespace Vice
 {
     public class MainVM : Notify
     {
+        #region DLL
+
         [DllImport("User32.dll", SetLastError = true)]
         public static extern bool LockWorkStation();
 
@@ -31,6 +33,8 @@ namespace Vice
         public const int KEYEVENTF_EXTENDEDKEY = 0x0001; //Key down flag
         public const int KEYEVENTF_KEYUP = 0x0002; //Key up flag
 
+        #endregion DLL
+
         public MainVM()
         {
             StartThreadCom();
@@ -42,7 +46,16 @@ namespace Vice
         private ManualResetEvent ColourWait = new ManualResetEvent(true);
 
         Thread MainThread;
-        
+
+        private string _serialPort = "COM3";
+        public string SerialPortName
+        {
+            get => _serialPort;
+            set { _serialPort = value; NotifyPropertyChanged(); }
+        }
+
+        static SerialPort ArdPort = new SerialPort("COM3", 9600, Parity.None, 8, StopBits.One);
+
         private bool LoopKiller = false;
 
         public bool Running
@@ -135,6 +148,8 @@ namespace Vice
                         // Control Options
                         else if (TestWord == "Type")
                             TypeCommand(ValueWord);
+                        else if (TestWord == "Remote")
+                            RemoteCommand(ValueWord, SecondValueWord);
 
                         Thread.Sleep(LightInterval);
                     }
@@ -205,6 +220,31 @@ namespace Vice
             }
 
             return output;
+        }
+
+        // Sends down the serial connection
+        private void SendSerial(string content, bool Continue = false, int WaitTime = 0)
+        {
+            try
+            {
+                if (!ArdPort.IsOpen)
+                    ArdPort.Open();
+
+                ArdPort.Handshake = Handshake.None;
+                ArdPort.Write(content);
+
+                if (!Continue)
+                    ArdPort.Close();
+
+                if (WaitTime > 0)
+                    Thread.Sleep(WaitTime);
+
+                Console.WriteLine("X");
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllText(LogLocation, ex.ToString());
+            }
         }
 
         #endregion Methods
@@ -373,6 +413,78 @@ namespace Vice
             }
         }
 
+        // Mimics a tv remote for the tv/sound bar
+        private void RemoteCommand(string command, string Args = "")
+        {
+            WipeStem("Remote" + command);
+
+            if (command == "NightMode")
+            {
+                SendSerial("BAR B");
+            }
+            else if (command == "Volume")
+            {
+                int amount = int.Parse(Args.Split(' ')[1]);
+                string Direction = Args.Split(' ')[0];
+
+                // Itterates in a loop for n-1 times with continue set true and a timer
+                for(int x = 0; x + 1 < amount; x++)
+                {
+                    if (Direction == "Up")
+                        SendSerial("BAR M", true, 240);
+                    else if (Direction == "Down")
+                        SendSerial("BAR N", true, 240);
+                }
+
+                // Final run with continue set false
+                if (Direction == "Up")
+                    SendSerial("BAR M");
+                else if (Direction == "Down")
+                    SendSerial("BAR N");
+            }
+            else if (command == "Woofer")
+            {
+                int amount = int.Parse(Args.Split(' ')[1]);
+                string Direction = Args.Split(' ')[0];
+
+                // Itterates in a loop for n-1 times with continue set true
+                for (int x = 0; x + 1 < amount; x++)
+                {
+                    if (Direction == "Up")
+                        SendSerial("BAR O", true, 240);
+                    else if (Direction == "Down")
+                        SendSerial("BAR P", true, 240);
+                }
+
+                // Final run with continue set false
+                if (Direction == "Up")
+                    SendSerial("BAR O");
+                else if (Direction == "Down")
+                    SendSerial("BAR P");
+            }
+            else if (command == "Power")
+            {
+                if (Args == "TV")
+                    SendSerial("TV 1");
+                else if (Args == "Bar")
+                    SendSerial("BAR 0");
+            }
+            else if (command == "Tv Mode")
+            {
+                SendSerial("TV B", true, 400);
+                SendSerial("TV 6", true, 300);
+                SendSerial("TV 6", true, 400);
+                SendSerial("TV 6", true, 800);
+
+                if (Args == "Up")
+                    SendSerial("TV 5", true, 200);
+                else if (Args == "Down")
+                    SendSerial("TV 7", true, 200);
+
+                SendSerial("TV 9");
+            }
+        }
+
         #endregion Stem Commands
 
         #region Command Methods
@@ -395,6 +507,7 @@ namespace Vice
             NotifyPropertyChanged("Running");
         }
 
+        // Used from test button
         public void SendCommandCom()
         {
             try
@@ -409,11 +522,10 @@ namespace Vice
             }
             catch (Exception ex)
             {
-                 
+                File.AppendAllText(LogLocation, ex.ToString());
             }
         }
 
-        static SerialPort ArdPort = new SerialPort("COM3", 9600, Parity.None, 8, StopBits.One);
 
         #endregion Command Methods
 
