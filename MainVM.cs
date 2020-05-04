@@ -428,7 +428,7 @@ namespace Vice
                 string Direction = Args.Split(' ')[0];
 
                 // Itterates in a loop for n-1 times with continue set true and a timer
-                for(int x = 0; x + 1 < amount; x++)
+                for(int x = 0; x + 1 < amount && x < 50; x++)
                 {
                     if (Direction == "Up")
                         SendSerial("BAR M", true, 240);
@@ -448,7 +448,7 @@ namespace Vice
                 string Direction = Args.Split(' ')[0];
 
                 // Itterates in a loop for n-1 times with continue set true
-                for (int x = 0; x + 1 < amount; x++)
+                for (int x = 0; x + 1 < amount && x < 12; x++)
                 {
                     if (Direction == "Up")
                         SendSerial("BAR O", true, 240);
