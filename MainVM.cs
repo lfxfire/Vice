@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using AudioSwitcher.AudioApi.CoreAudio;
 using Telegram.Bot;
+using System.Windows.Threading;
 
 namespace Vice
 {
@@ -42,8 +43,42 @@ namespace Vice
 
         #region Properties
 
+        #region Remote Holding Values
+
+        private bool _tvPower = true;
+        public bool TvPower
+        {
+            get => _tvPower;
+            set { _tvPower = value; NotifyPropertyChanged(); }
+        }
+
+        private bool _barPower = true;
+        public bool BarPower
+        {
+            get => _barPower;
+            set { _barPower = value; NotifyPropertyChanged(); }
+        }
+
+        // represents the state, 3 = normal, 2 = cinema, 1 = true cinema
+        private int _tvMode = 3;
+        public int TvMode
+        {
+            get => _tvMode;
+            set { _tvMode = value; NotifyPropertyChanged(); }
+        }
+
+        // sets if the tv mode is currently state changing
+        private bool _modechanging = false;
+        public bool ModeChanging
+        {
+            get => _modechanging;
+            set { _modechanging = value; NotifyPropertyChanged(); }
+        }
+
+        #endregion Remote Holding Values
+
         private ManualResetEvent ExitWait = new ManualResetEvent(true);
-        private ManualResetEvent ColourWait = new ManualResetEvent(true);
+        private ManualResetEvent RemoteWait = new ManualResetEvent(true);
 
         Thread MainThread;
 
@@ -98,7 +133,6 @@ namespace Vice
 
         private void Run()
         {
-            ColourWait.Set();
             ActiveColour = "Green";
 
             while (!LoopKiller)
@@ -171,21 +205,6 @@ namespace Vice
             }
 
             ExitWait.Set();
-        }
-
-        private void ColourChangeCreate(string colour)
-        {
-            Thread temp = new Thread(() => ColourChange(colour));
-            temp.Start();
-        }
-
-        private void ColourChange(string colour)
-        {
-            ColourWait.Reset();
-            ActiveColour = colour;
-            Thread.Sleep(200);
-            ActiveColour = "Green";
-            ColourWait.Set();
         }
 
         // Runs at the end of the command - removes the document and writes to log
@@ -414,9 +433,13 @@ namespace Vice
         }
 
         // Mimics a tv remote for the tv/sound bar
-        private void RemoteCommand(string command, string Args = "")
+        private void RemoteCommand(string command, string Args = "", bool Wipe = true)
         {
-            WipeStem("Remote" + command);
+            if (Wipe)
+                WipeStem("Remote" + command);
+
+            RemoteWait.WaitOne();
+            RemoteWait.Reset();
 
             if (command == "NightMode")
             {
@@ -465,24 +488,50 @@ namespace Vice
             else if (command == "Power")
             {
                 if (Args == "TV")
+                {
                     SendSerial("TV 1");
+                    TvPower = !TvPower;
+                }
                 else if (Args == "Bar")
+                {
                     SendSerial("BAR 0");
+                    BarPower = !BarPower;
+                }
             }
             else if (command == "Tv Mode")
             {
+                // Uses dispactcher so works from background thread
+                App.Current.Dispatcher.Invoke(() => { ModeChanging = true; });
+
+                // Changes the mode down/up 
                 SendSerial("TV B", true, 400);
                 SendSerial("TV 6", true, 300);
                 SendSerial("TV 6", true, 400);
                 SendSerial("TV 6", true, 800);
 
-                if (Args == "Up")
+                // goes up or down and adjusts the Tv mode value, Upw/DownW adds a wait for when a double stack is applied
+                if (Args == "Up" || Args == "UpW")
+                {
                     SendSerial("TV 5", true, 200);
-                else if (Args == "Down")
+                    if (TvMode < 3)
+                        App.Current.Dispatcher.Invoke(() => { TvMode++; });
+                }
+                else if (Args == "Down" || Args == "DownW")
+                {
                     SendSerial("TV 7", true, 200);
+                    if (TvMode > 1)
+                        App.Current.Dispatcher.Invoke(() => { TvMode--; });
+                }
 
                 SendSerial("TV 9");
+
+                if (Args == "UpW" || Args == "DownW")
+                    Thread.Sleep(1000);
+
+                App.Current.Dispatcher.Invoke(() => { ModeChanging = false; });
             }
+
+            RemoteWait.Set();
         }
 
         #endregion Stem Commands
@@ -526,6 +575,79 @@ namespace Vice
             }
         }
 
+        // Creates a thread which turns Up the tv mode
+        public void TvUpCreater(bool Wait = false)
+        {
+            if (!Wait)
+            {
+                var ThreadUp = new Thread(() => RemoteCommand("Tv Mode", "Up", false));
+                ThreadUp.Start();
+            }
+            else
+            {
+                var ThreadUp = new Thread(() => RemoteCommand("Tv Mode", "UpW", false));
+                ThreadUp.Start();
+            }
+        }
+
+        // Creates a thread which turns down the tv mode
+        public void TvDownCreater(bool Wait = false)
+        {
+            if (!Wait)
+            {
+                var ThreadUp = new Thread(() => RemoteCommand("Tv Mode", "Down", false));
+                ThreadUp.Start();
+            }
+            else
+            {
+                var ThreadUp = new Thread(() => RemoteCommand("Tv Mode", "DownW", false));
+                ThreadUp.Start();
+            }
+        }
+
+        // Creates multipule threads to turd up and down the tv mode
+        public void TvModeComN()
+        {
+            if (!ModeChanging)
+            {
+                if (TvMode == 1)
+                {
+                    TvUpCreater(true);
+                    TvUpCreater();
+                }
+                else if (TvMode == 2)
+                    TvUpCreater();
+            }
+        }
+
+        // Creates multipule threads to turd up and down the tv mode
+        public void TvModeComC()
+        {
+            if (!ModeChanging)
+            {
+                if (TvMode == 3)
+                {
+                    TvDownCreater();
+                }
+                else if (TvMode == 1)
+                    TvUpCreater();
+            }
+        }
+
+        // Creates multipule threads to turd up and down the tv mode
+        public void TvModeComTC()
+        {
+            if (!ModeChanging)
+            {
+                if (TvMode == 3)
+                {
+                    TvDownCreater(true);
+                    TvDownCreater();
+                }
+                else if (TvMode == 2)
+                    TvDownCreater();
+            }
+        }
 
         #endregion Command Methods
 
@@ -569,6 +691,140 @@ namespace Vice
                 return _sendCommand;
             }
         }
+
+        private RelayCommand _defaultN;
+        public ICommand DefaultN
+        {
+            get
+            {
+                if (_defaultN == null)
+                {
+                    _defaultN = new RelayCommand(param => { TvMode = 3; });
+                }
+                return _defaultN;
+            }
+        }
+
+        private RelayCommand _defaultC;
+        public ICommand DefaultC
+        {
+            get
+            {
+                if (_defaultC == null)
+                {
+                    _defaultC = new RelayCommand(param => { TvMode = 2; });
+                }
+                return _defaultC;
+            }
+        }
+
+        private RelayCommand _defaultTC;
+        public ICommand DefaultTC
+        {
+            get
+            {
+                if (_defaultTC == null)
+                {
+                    _defaultTC = new RelayCommand(param => { TvMode = 1; });
+                }
+                return _defaultTC;
+            }
+        }
+
+        #region Remote Buttons
+
+        private RelayCommand _powerTvCommand;
+        public ICommand PowerTvCommand
+        {
+            get
+            {
+                if (_powerTvCommand == null)
+                {
+                    _powerTvCommand = new RelayCommand(param => RemoteCommand("Power", "TV", false));
+                }
+                return _powerTvCommand;
+            }
+        }
+
+        private RelayCommand _powerBarCommand;
+        public ICommand PowerBarCommand
+        {
+            get
+            {
+                if (_powerBarCommand == null)
+                {
+                    _powerBarCommand = new RelayCommand(param => RemoteCommand("Power", "Bar", false));
+                }
+                return _powerBarCommand;
+            }
+        }
+
+        private RelayCommand _tvUp;
+        public ICommand TvUp
+        {
+            get
+            {
+                if (_tvUp == null)
+                {
+                    _tvUp = new RelayCommand(param => TvUpCreater());
+                }
+                return _tvUp;
+            }
+        }
+        
+        private RelayCommand _tvDown;
+        public ICommand TvDown
+        {
+            get
+            {
+                if (_tvDown == null)
+                {
+                    _tvDown = new RelayCommand(param => TvDownCreater());
+                }
+                return _tvDown;
+            }
+        }
+
+        private RelayCommand _tvModeC;
+        public ICommand TvModeC
+        {
+            get
+            {
+                if (_tvModeC == null)
+                {
+                    _tvModeC = new RelayCommand(param => TvModeComC());
+                }
+                return _tvModeC;
+            }
+        }
+
+        private RelayCommand _tvModeN;
+        public ICommand TvModeN
+        {
+            get
+            {
+                if (_tvModeN == null)
+                {
+                    _tvModeN = new RelayCommand(param => TvModeComN());
+                }
+                return _tvModeN;
+            }
+        }
+
+        private RelayCommand _tvModeTC;
+        public ICommand TvModeTC
+        {
+            get
+            {
+                if (_tvModeTC == null)
+                {
+                    _tvModeTC = new RelayCommand(param => TvModeComTC());
+                }
+                return _tvModeTC;
+            }
+        }
+
+        #endregion Remote Buttons
 
         #endregion Commands
 

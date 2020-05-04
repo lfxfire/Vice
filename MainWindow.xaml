@@ -4,31 +4,170 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Vice"
+        xmlns:Con="clr-namespace:Vice.Resources"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" Icon="Resources\Images\Marionette.ico">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="3*"/>
+            <RowDefinition Height="5*"/>
             <RowDefinition Height="1*"/>
         </Grid.RowDefinitions>
+
+        <Grid.Resources>
+            <Con:ColourConvert x:Key="Colour"/>
+            <Con:InvertBool x:Key="Invert"/>
+            <Con:ColourIntConvert x:Key="IntCol"/>
+            <Con:ValueMultiply x:Key="Modifier"/>
+            <SolidColorBrush x:Key="BaseColour" Color="#FFD4D4D4"/>
+            <Style x:Key="Cicle Button" TargetType="Button">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Ellipse Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Fill="{TemplateBinding Background}" Stroke="Black" StrokeThickness="1"
+                                     x:Name="Ellipse"/>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Ellipse" Property="Stroke" Value="gray"/>
+                                    <Setter TargetName="Ellipse" Property="Fill" Value="white"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="Retangle Button" TargetType="Button">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid Opacity="1">
+                                <Rectangle Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Fill="{TemplateBinding Background}" Stroke="Black" StrokeThickness="1"
+                                     x:Name="Rec" RadiusX="6" RadiusY="6"/>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <DataTrigger Binding="{Binding ModeChanging}" Value="True">
+                                    <Setter Property="Opacity" Value="0.4"/>
+                                </DataTrigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Rec" Property="Stroke" Value="gray"/>
+                                    <Setter TargetName="Rec" Property="Fill" Value="white"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="ModeButton" TargetType="Button">
+                <Setter Property="Width" Value="30"/>
+                <Setter Property="Height" Value="20"/>
+                <Setter Property="Margin" Value="3"/>
+                <Setter Property="Opacity" Value="1"/>
+            </Style>
+        </Grid.Resources>
 
         <DockPanel>
             <Menu DockPanel.Dock="Top" VerticalAlignment="Center">
                 <MenuItem Header="File">
-                    <MenuItem Header="Open Log" />
+                    <MenuItem Header="Open Log"/>
+                    <MenuItem Header="Restart"/>
                 </MenuItem>
-                <MenuItem Header="Commands"/>
+                <MenuItem Header="Commands">
+                    <MenuItem Header="Volume">
+                        
+                    </MenuItem>
+                    <MenuItem Header="Media">
+                        
+                    </MenuItem>
+                    <MenuItem Header="Power">
+                        
+                    </MenuItem>
+                    <MenuItem Header="Remote">
+                        
+                    </MenuItem>
+                    <MenuItem Header="Test Serial" Command="{Binding SendCommand}"/>
+
+                </MenuItem>
+                <MenuItem Header="Defaults">
+                    <MenuItem Header="Tv Mode">
+                        <MenuItem Header="Normal" Command="{Binding DefaultN}"/>
+                        <MenuItem Header="Cinema" Command="{Binding DefaultC}"/>
+                        <MenuItem Header="True Cinema" Command="{Binding DefaultTC}"/>
+                    </MenuItem>
+                </MenuItem>
             </Menu>
         </DockPanel>
-        
-        <ScrollViewer Margin="5" Grid.Row="1">
-            <TextBlock Text="{Binding Output}" TextWrapping="WrapWithOverflow" Background="WhiteSmoke" Padding="5"/>            
-        </ScrollViewer>
-        
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="4*"/>
+                <ColumnDefinition Width="350"/>
+            </Grid.ColumnDefinitions>
+            <ScrollViewer Margin="5" Grid.Row="1">
+                <TextBlock Text="{Binding Output}" TextWrapping="WrapWithOverflow" Background="WhiteSmoke" Padding="5"/>
+            </ScrollViewer>
+
+            <Grid Grid.Column="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="1*"/>
+                    <RowDefinition Height="3*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel VerticalAlignment="Center">
+                    <Label Content="Power" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="50">
+                        <Button Content="TV" Width="50" Height="35" Style="{StaticResource Cicle Button}" Margin="5,0" Background="{Binding TvPower, Converter={StaticResource Colour}}"
+                            Command="{Binding PowerTvCommand}"/>
+                        <Button Content="Bar" Width="50" Height="35" Style="{StaticResource Cicle Button}" Margin="5,0" Background="{Binding BarPower, Converter={StaticResource Colour}}"
+                            Command="{Binding PowerBarCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Grid.Column="1" HorizontalAlignment="Center">
+                    <StackPanel VerticalAlignment="Center">
+                        <Label Content="Tv Mode" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="50">
+                            <Button Content="/\" Width="50" Height="30" Style="{StaticResource Retangle Button}" Margin="5,0" Background="{StaticResource BaseColour}"
+                            Command="{Binding TvUp}" FontSize="15" IsEnabled="{Binding ModeChanging, Converter={StaticResource Invert}}"/>
+                            <Button Content="\/" Width="50" Height="30" Style="{StaticResource Retangle Button}" Margin="5,0" Background="{StaticResource BaseColour}"
+                            Command="{Binding TvDown}" FontSize="15" IsEnabled="{Binding ModeChanging, Converter={StaticResource Invert}}"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel VerticalAlignment="Center">
+                        <Button Content="N" Style="{StaticResource ModeButton}" Background="{Binding TvMode, Converter={StaticResource IntCol}, ConverterParameter=3}"
+                                Command="{Binding TvModeN}"/>
+                        <Button Content="C" Style="{StaticResource ModeButton}" Background="{Binding TvMode, Converter={StaticResource IntCol}, ConverterParameter=2}"
+                                Command="{Binding TvModeC}"/>
+                        <Button Content="TC" Style="{StaticResource ModeButton}" Background="{Binding TvMode, Converter={StaticResource IntCol}, ConverterParameter=1}"
+                                Command="{Binding TvModeTC}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Name="Stack">
+                    <Label Content="Bar Volume" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Slider Orientation="Vertical" Height="{Binding ElementName=Stack, Path=ActualHeight, Converter={StaticResource Modifier}, ConverterParameter=0.95}"/>
+
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <Border BorderThickness="0,0,2,0" BorderBrush="Black"/>
+        </Grid>
+
+        <Border BorderThickness="0,2,0,2" BorderBrush="#FFAAA6A6" Grid.Row="1"/>
+
         <Button Width="200" Height="50" Content="Stop" Command="{Binding StopThread}" Grid.Row="2" HorizontalAlignment="Left" Margin="20,0"/>
         <Button Width="200" Height="50" Content="Start" Command="{Binding StartThread}" Grid.Row="2" HorizontalAlignment="Left" Margin="240,0,0,0"/>
-        <Button Width="100" Height="50" Content="Test" Command="{Binding SendCommand}" Grid.Row="2" HorizontalAlignment="Left" Margin="460,0,0,0"/>
         <Ellipse Width="30" Height="30" Fill="{Binding ActiveColour}" Grid.Row="2" HorizontalAlignment="Right" Margin="50,0" Stroke="Black"/>
 
     </Grid>

@@ -132,6 +132,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="MainVM.cs" />
+    <Compile Include="Resources\Converters.cs" />
     <Compile Include="Resources\Notify.cs" />
     <Compile Include="Resources\RelayCommand.cs" />
     <Compile Include="Resources\Statics.cs" />
