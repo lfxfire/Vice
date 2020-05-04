@@ -70,6 +70,7 @@ namespace Vice
         private void CloseWindow(object sender, EventArgs e)
         {
             MainVM.StopThreadCom();
+            MainVM.StartVolumeThread();
             Current.Shutdown();
         }
 

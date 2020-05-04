@@ -69,4 +69,34 @@ namespace Vice.Resources
             throw new NotImplementedException();
         }
     }
+
+    public class Percentage : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            double max = double.Parse((string)parameter);
+            double no = (int)value;
+            return no / max * 100;
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class Offsetter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            double product = 0.95;
+            double v = (double)value;
+            return product * v - double.Parse((string)parameter);
+
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
 }

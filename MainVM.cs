@@ -39,6 +39,7 @@ namespace Vice
         public MainVM()
         {
             StartThreadCom();
+            StartVolumeThread();
         }
 
         #region Properties
@@ -67,6 +68,41 @@ namespace Vice
             set { _tvMode = value; NotifyPropertyChanged(); }
         }
 
+        private int _tvVolume = 35;
+        public int TvVolume
+        {
+            get => _tvVolume;
+            set { _tvVolume = value; NotifyPropertyChanged(); }
+        }
+
+        private int _tvTVolume = 35;
+        public int TvTargetVolume
+        {
+            get => _tvTVolume;
+            set { _tvTVolume = value; NotifyPropertyChanged(); }
+        }
+
+        private int _SubVolume = 12;
+        public int SubVolume
+        {
+            get => _SubVolume;
+            set { _SubVolume = value; NotifyPropertyChanged(); }
+        }
+
+        private int _subTarget = 12;
+        public int SubTargetVolume
+        {
+            get => _subTarget;
+            set { _subTarget = value; NotifyPropertyChanged(); }
+        }
+
+        private bool _nightMode = false;
+        public bool NightMode
+        {
+            get => _nightMode;
+            set { _nightMode = value; NotifyPropertyChanged(); }
+        }
+
         // sets if the tv mode is currently state changing
         private bool _modechanging = false;
         public bool ModeChanging
@@ -81,6 +117,9 @@ namespace Vice
         private ManualResetEvent RemoteWait = new ManualResetEvent(true);
 
         Thread MainThread;
+        Thread VolumeThread;
+
+        private bool VolumeKiller = false;
 
         private string _serialPort = "COM3";
         public string SerialPortName
@@ -221,6 +260,70 @@ namespace Vice
                 File.AppendAllText( LogLocation, DateTime.UtcNow + " - Command received: " + Command + Environment.NewLine);
                 //Output += "\n" + (DateTime.UtcNow - CommandRead).ToString();
             }
+        }
+
+        // Checks and changes the volume
+        private void VolChange()
+        {
+            while (!VolumeKiller)
+            {
+                Thread.Sleep(100);
+
+                // if higher then waits till free then decreases
+                if (TvVolume > TvTargetVolume)
+                {
+                    RemoteWait.WaitOne();
+                    RemoteWait.Reset();
+
+                    SendSerial("BAR N");
+                    TvVolume--;
+
+                    Thread.Sleep(100);
+
+                    RemoteWait.Set();
+                }
+                // if Lower then waits till free then decreases
+                if (TvVolume < TvTargetVolume)
+                {
+                    RemoteWait.WaitOne();
+                    RemoteWait.Reset();
+
+                    SendSerial("BAR M");
+                    TvVolume++;
+
+                    Thread.Sleep(100);
+
+                    RemoteWait.Set();
+                }
+
+                // if higher then waits till free then decreases
+                if (SubVolume > SubTargetVolume)
+                {
+                    RemoteWait.WaitOne();
+                    RemoteWait.Reset();
+
+                    SendSerial("BAR P");
+                    SubVolume--;
+
+                    Thread.Sleep(100);
+
+                    RemoteWait.Set();
+                }
+                // if Lower then waits till free then decreases
+                if (SubVolume < SubTargetVolume)
+                {
+                    RemoteWait.WaitOne();
+                    RemoteWait.Reset();
+
+                    SendSerial("BAR O");
+                    SubVolume++;
+
+                    Thread.Sleep(100);
+
+                    RemoteWait.Set();
+                }
+            }
+
         }
 
         // returns a number if 
@@ -444,6 +547,7 @@ namespace Vice
             if (command == "NightMode")
             {
                 SendSerial("BAR B");
+                NightMode = !NightMode;
             }
             else if (command == "Volume")
             {
@@ -474,16 +578,32 @@ namespace Vice
                 for (int x = 0; x + 1 < amount && x < 12; x++)
                 {
                     if (Direction == "Up")
+                    {
                         SendSerial("BAR O", true, 240);
+                        SubVolume++;
+                        SubTargetVolume++;
+                    }
                     else if (Direction == "Down")
+                    {
                         SendSerial("BAR P", true, 240);
+                        SubVolume--;
+                        SubTargetVolume--;
+                    }
                 }
 
                 // Final run with continue set false
                 if (Direction == "Up")
+                {
                     SendSerial("BAR O");
+                    SubVolume++;
+                    SubTargetVolume++;
+                }
                 else if (Direction == "Down")
+                {
                     SendSerial("BAR P");
+                    SubVolume--;
+                    SubTargetVolume--;
+                }
             }
             else if (command == "Power")
             {
@@ -554,6 +674,18 @@ namespace Vice
             MainThread = new Thread(new ThreadStart(Run));
             MainThread.Start();
             NotifyPropertyChanged("Running");
+        }
+
+        public void StartVolumeThread()
+        {
+            VolumeKiller = false;
+            VolumeThread = new Thread(() => VolChange());
+            VolumeThread.Start();
+        }
+
+        public void StopVolumeThread()
+        {
+            VolumeKiller = true;
         }
 
         // Used from test button
@@ -647,6 +779,25 @@ namespace Vice
                 else if (TvMode == 2)
                     TvDownCreater();
             }
+        }
+
+        public void NightModeCom()
+        {
+            RemoteWait.WaitOne();
+            RemoteWait.Reset();
+
+            SendSerial("BAR B");
+            NightMode = !NightMode;
+
+            Thread.Sleep(100);
+
+            RemoteWait.Set();
+        }
+
+        public void NightModeStarter()
+        {
+            var NightModeThread = new Thread(() => NightModeCom());
+            NightModeThread.Start();
         }
 
         #endregion Command Methods
@@ -821,6 +972,110 @@ namespace Vice
                     _tvModeTC = new RelayCommand(param => TvModeComTC());
                 }
                 return _tvModeTC;
+            }
+        }
+
+        private RelayCommand _tvVolUp1;
+        public ICommand TvVolUp1
+        {
+            get
+            {
+                if (_tvVolUp1 == null)
+                {
+                    _tvVolUp1 = new RelayCommand(param => { TvTargetVolume++; });
+                }
+                return _tvVolUp1;
+            }
+        }
+
+        private RelayCommand _tvVolUp5;
+        public ICommand TvVolUp5
+        {
+            get
+            {
+                if (_tvVolUp5 == null)
+                {
+                    _tvVolUp5 = new RelayCommand(param => { TvTargetVolume += 5; });
+                }
+                return _tvVolUp5;
+            }
+        }
+
+        private RelayCommand _tvVolDown5;
+        public ICommand TvVolDown5
+        {
+            get
+            {
+                if (_tvVolDown5 == null)
+                {
+                    _tvVolDown5 = new RelayCommand(param => { TvTargetVolume -= 5; });
+                }
+                return _tvVolDown5;
+            }
+        }
+
+        private RelayCommand _tvVolDown1;
+        public ICommand TvVolDown1
+        {
+            get
+            {
+                if (_tvVolDown1 == null)
+                {
+                    _tvVolDown1 = new RelayCommand(param => { TvTargetVolume--; });
+                }
+                return _tvVolDown1;
+            }
+        }
+
+        private RelayCommand _SubVolDown1;
+        public ICommand SubVolDown2
+        {
+            get
+            {
+                if (_SubVolDown1 == null)
+                {
+                    _SubVolDown1 = new RelayCommand(param => { SubTargetVolume -= 2; });
+                }
+                return _SubVolDown1;
+            }
+        }
+
+        private RelayCommand _SubVolup2;
+        public ICommand SubVolUp2
+        {
+            get
+            {
+                if (_SubVolup2 == null)
+                {
+                    _SubVolup2 = new RelayCommand(param => { SubTargetVolume += 2; });
+                }
+                return _SubVolup2;
+            }
+        }
+
+        private RelayCommand _nightmodeComm;
+        public ICommand NightmodeComm
+        {
+            get
+            {
+                if (_nightmodeComm == null)
+                {
+                    _nightmodeComm = new RelayCommand(param => { NightModeStarter(); });
+                }
+                return _nightmodeComm;
+            }
+        }
+
+        private RelayCommand _nightModeSwap;
+        public ICommand NightModeSwap
+        {
+            get
+            {
+                if (_nightModeSwap == null)
+                {
+                    _nightModeSwap = new RelayCommand(param => { NightMode = !NightMode; });
+                }
+                return _nightModeSwap;
             }
         }
 

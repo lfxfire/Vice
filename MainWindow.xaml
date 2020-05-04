@@ -19,6 +19,8 @@
             <Con:InvertBool x:Key="Invert"/>
             <Con:ColourIntConvert x:Key="IntCol"/>
             <Con:ValueMultiply x:Key="Modifier"/>
+            <Con:Percentage x:Key="Percentage"/>
+            <Con:Offsetter x:Key="Offset"/>
             <SolidColorBrush x:Key="BaseColour" Color="#FFD4D4D4"/>
             <Style x:Key="Cicle Button" TargetType="Button">
                 <Setter Property="Template">
@@ -69,6 +71,34 @@
                 <Setter Property="Margin" Value="3"/>
                 <Setter Property="Opacity" Value="1"/>
             </Style>
+            <Style x:Key="VolumeBar" TargetType="ProgressBar">
+                <Setter Property="Width" Value="20"/>
+            </Style>
+            <Style x:Key="night Button" TargetType="Button">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid Opacity="1">
+                                <Rectangle Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Fill="{TemplateBinding Background}" Stroke="Black" StrokeThickness="1"
+                                     x:Name="Rec" RadiusX="6" RadiusY="6"/>
+                                <Label x:Name="Lab" HorizontalAlignment="Center" VerticalAlignment="Center" Content="NightMode - Off"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <DataTrigger Binding="{Binding NightMode}" Value="True">
+                                    <Setter Property="Background" Value="#FF404040"/>
+                                    <Setter TargetName="Lab" Property="Foreground" Value="White"/>
+                                    <Setter TargetName="Lab" Property="Content" Value="NightMode - On"/>
+                                </DataTrigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Rec" Property="Stroke" Value="gray"/>
+                                    <Setter TargetName="Rec" Property="StrokeThickness" Value="3"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </Grid.Resources>
 
         <DockPanel>
@@ -99,6 +129,7 @@
                         <MenuItem Header="Cinema" Command="{Binding DefaultC}"/>
                         <MenuItem Header="True Cinema" Command="{Binding DefaultTC}"/>
                     </MenuItem>
+                    <MenuItem Header="Night Mode" Command="{Binding NightModeSwap}"/>
                 </MenuItem>
             </Menu>
         </DockPanel>
@@ -154,10 +185,45 @@
 
                 <StackPanel Grid.Row="1" Name="Stack">
                     <Label Content="Bar Volume" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Slider Orientation="Vertical" Height="{Binding ElementName=Stack, Path=ActualHeight, Converter={StaticResource Modifier}, ConverterParameter=0.95}"/>
-
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" >
+                        <ProgressBar Orientation="Vertical" Height="{Binding ElementName=Stack, Path=ActualHeight, Converter={StaticResource Modifier}, ConverterParameter=0.95}"
+                                     Style="{StaticResource VolumeBar}" Value="{Binding TvVolume, Converter={StaticResource Percentage}, ConverterParameter=50}" Margin="2,0"/>
+                        <Slider Orientation="Vertical" Height="{Binding ElementName=Stack, Path=ActualHeight, Converter={StaticResource Offset}, ConverterParameter=16}"
+                                Margin="2,0" Minimum="0" Maximum="50" Value="{Binding TvTargetVolume}" TickPlacement="TopLeft" TickFrequency="5"/>
+                        <StackPanel>
+                            <Label Content="Current:" Padding="0" HorizontalAlignment="Center"/>
+                            <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding TvVolume}" 
+                                   HorizontalContentAlignment="Center" FontSize="20" Padding="0"/>
+                            <Label Content="Target:" Padding="0" HorizontalAlignment="Center"/>
+                            <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding TvTargetVolume}"
+                                   HorizontalContentAlignment="Center" FontSize="20" Padding="0"/>
+                            <Button Content="+5" Width="40" Height="25" Margin="2" Command="{Binding TvVolUp5}"/>
+                            <Button Content="+1" Width="40" Height="25" Margin="2" Command="{Binding TvVolUp1}"/>
+                            <Button Content="-1" Width="40" Height="25" Margin="2" Command="{Binding TvVolDown1}"/>
+                            <Button Content="-5" Width="40" Height="25" Margin="2" Command="{Binding TvVolDown5}"/>
+                        </StackPanel>
                     </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="1">
+                    <Label Content="Subwoofer Volume" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Name="Stack2">
+                        <ProgressBar Orientation="Vertical" Height="{Binding ElementName=Stack2, Path=ActualHeight, Converter={StaticResource Modifier}, ConverterParameter=0.95}"
+                                     Style="{StaticResource VolumeBar}" Value="{Binding SubVolume, Converter={StaticResource Percentage}, ConverterParameter=12}" Margin="2,0"/>
+                        <Slider Orientation="Vertical" Height="{Binding ElementName=Stack2, Path=ActualHeight, Converter={StaticResource Offset}, ConverterParameter=16}"
+                                Margin="2,0" Minimum="0" Maximum="12" Value="{Binding SubTargetVolume}" TickPlacement="TopLeft" TickFrequency="2"/>
+                        <StackPanel>
+                            <Label Content="Current:" Padding="0" HorizontalAlignment="Center"/>
+                            <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding SubVolume}" 
+                                   HorizontalContentAlignment="Center" FontSize="20" Padding="0"/>
+                            <Label Content="Target:" Padding="0" HorizontalAlignment="Center"/>
+                            <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding SubTargetVolume}"
+                                   HorizontalContentAlignment="Center" FontSize="20" Padding="0"/>
+                            <Button Content="+2" Width="40" Height="25" Margin="2" Command="{Binding SubVolUp2}"/>
+                            <Button Content="-2" Width="40" Height="25" Margin="2" Command="{Binding SubVolDown2}"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Content="NightMode" Margin="0,12" Style="{StaticResource night Button}" Width="140" Height="40" Command="{Binding NightmodeComm}"/>
                 </StackPanel>
             </Grid>
 
