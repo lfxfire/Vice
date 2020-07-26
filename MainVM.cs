@@ -283,7 +283,7 @@ namespace Vice
                     RemoteWait.Set();
                 }
                 // if Lower then waits till free then decreases
-                if (TvVolume < TvTargetVolume)
+                else if (TvVolume < TvTargetVolume)
                 {
                     RemoteWait.WaitOne();
                     RemoteWait.Reset();
@@ -297,7 +297,7 @@ namespace Vice
                 }
 
                 // if higher then waits till free then decreases
-                if (SubVolume > SubTargetVolume)
+                else if (SubVolume > SubTargetVolume)
                 {
                     RemoteWait.WaitOne();
                     RemoteWait.Reset();
@@ -310,7 +310,7 @@ namespace Vice
                     RemoteWait.Set();
                 }
                 // if Lower then waits till free then decreases
-                if (SubVolume < SubTargetVolume)
+                else if (SubVolume < SubTargetVolume)
                 {
                     RemoteWait.WaitOne();
                     RemoteWait.Reset();
@@ -555,7 +555,7 @@ namespace Vice
                 string Direction = Args.Split(' ')[0];
 
                 // Itterates in a loop for n-1 times with continue set true and a timer
-                for(int x = 0; x + 1 < amount && x < 50; x++)
+                for (int x = 0; x + 1 < amount && x < 50; x++)
                 {
                     if (Direction == "Up")
                         SendSerial("BAR M", true, 240);
@@ -649,6 +649,17 @@ namespace Vice
                     Thread.Sleep(1000);
 
                 App.Current.Dispatcher.Invoke(() => { ModeChanging = false; });
+            }
+            // Command for both tv off and hibernate
+            else if(command == "Bed time")
+            {
+                if (TvPower)
+                {
+                    SendSerial("TV 1");
+                    TvPower = !TvPower;
+                }
+
+                Application.SetSuspendState(PowerState.Hibernate, true, false);
             }
 
             RemoteWait.Set();
