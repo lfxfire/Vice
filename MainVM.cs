@@ -697,6 +697,8 @@ namespace Vice
         public void StopVolumeThread()
         {
             VolumeKiller = true;
+            RemoteWait.WaitOne(200);
+            VolumeThread = null;
         }
 
         // Used from test button
@@ -777,7 +779,7 @@ namespace Vice
             }
         }
 
-        // Creates multipule threads to turd up and down the tv mode
+        // Creates multipule threads to turn up and down the tv mode
         public void TvModeComTC()
         {
             if (!ModeChanging)
@@ -795,6 +797,11 @@ namespace Vice
         public void NightModeCom()
         {
             RemoteWait.WaitOne();
+
+            // Checks no other has passed through at the same time
+            Thread.Sleep(50);
+            RemoteWait.WaitOne();
+
             RemoteWait.Reset();
 
             SendSerial("BAR B");
