@@ -14,6 +14,9 @@ using System.Runtime.InteropServices;
 using AudioSwitcher.AudioApi.CoreAudio;
 using Telegram.Bot;
 using System.Windows.Threading;
+using Vice.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace Vice
 {
@@ -38,42 +41,18 @@ namespace Vice
 
         public MainVM()
         {
+            ReadLocal();
+
             StartThreadCom();
             StartVolumeThread();
+
+            // Sets the port name incase its been changed
+            ArdPort.PortName = Data.SerialPortName;
         }
 
         #region Properties
 
         #region Remote Holding Values
-
-        private bool _tvPower = true;
-        public bool TvPower
-        {
-            get => _tvPower;
-            set { _tvPower = value; NotifyPropertyChanged(); }
-        }
-
-        private bool _barPower = true;
-        public bool BarPower
-        {
-            get => _barPower;
-            set { _barPower = value; NotifyPropertyChanged(); }
-        }
-
-        // represents the state, 3 = normal, 2 = cinema, 1 = true cinema
-        private int _tvMode = 3;
-        public int TvMode
-        {
-            get => _tvMode;
-            set { _tvMode = value; NotifyPropertyChanged(); }
-        }
-
-        private int _tvVolume = 35;
-        public int TvVolume
-        {
-            get => _tvVolume;
-            set { _tvVolume = value; NotifyPropertyChanged(); }
-        }
 
         private int _tvTVolume = 35;
         public int TvTargetVolume
@@ -82,25 +61,11 @@ namespace Vice
             set { _tvTVolume = value; NotifyPropertyChanged(); }
         }
 
-        private int _SubVolume = 12;
-        public int SubVolume
-        {
-            get => _SubVolume;
-            set { _SubVolume = value; NotifyPropertyChanged(); }
-        }
-
         private int _subTarget = 12;
         public int SubTargetVolume
         {
             get => _subTarget;
             set { _subTarget = value; NotifyPropertyChanged(); }
-        }
-
-        private bool _nightMode = false;
-        public bool NightMode
-        {
-            get => _nightMode;
-            set { _nightMode = value; NotifyPropertyChanged(); }
         }
 
         // sets if the tv mode is currently state changing
@@ -121,11 +86,11 @@ namespace Vice
 
         private bool VolumeKiller = false;
 
-        private string _serialPort = "COM3";
-        public string SerialPortName
+        private SaveData _data = new SaveData();
+        public SaveData Data
         {
-            get => _serialPort;
-            set { _serialPort = value; NotifyPropertyChanged(); }
+            get => _data;
+            set { _data = value; NotifyPropertyChanged();}
         }
 
         static SerialPort ArdPort = new SerialPort("COM3", 9600, Parity.None, 8, StopBits.One);
@@ -154,9 +119,6 @@ namespace Vice
         int Inverval = 400;
         int LightInterval = 200;
 
-        string CommandStem = "C:\\Users\\laure\\DropBox\\Vice Link\\CommandStem.txt";
-        string LogLocation = "C:\\Users\\laure\\Dropbox\\Vice Link\\ViceLog.txt";
-
         private string _output = "Start Up Successful";
         public string Output
         {
@@ -180,14 +142,14 @@ namespace Vice
 
                 try
                 {
-                    if (File.Exists(CommandStem))
+                    if (File.Exists(Data.CommandStem))
                     {
                         ActiveColour = "Green";
                         //ColourChangeCreate("Blue");
 
                         CommandRead = DateTime.UtcNow;
 
-                        string[] ReadLines = File.ReadAllLines(CommandStem);
+                        string[] ReadLines = File.ReadAllLines(Data.CommandStem);
 
                         string TestWord = ReadLines[0];
                         string ValueWord = "";
@@ -235,8 +197,8 @@ namespace Vice
                 }
                 catch (Exception ex)
                 {
-                    File.Delete(CommandStem);
-                    File.AppendAllText(LogLocation, ex.ToString());
+                    File.Delete(Data.CommandStem);
+                    File.AppendAllText(Data.LogLocation, ex.ToString());
                 }
 
                 ActiveColour = "Green";
@@ -246,18 +208,37 @@ namespace Vice
             ExitWait.Set();
         }
 
+        // Reads the data file
+        private void ReadLocal()
+        {
+            string localpath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            JsonSerializerSettings JsonSettings = new JsonSerializerSettings() { Formatting = Formatting.Indented };
+
+            if (!Directory.Exists(localpath + "\\Vice"))
+                Directory.CreateDirectory(localpath + "\\Vice");
+            else if (File.Exists(localpath + "\\Vice\\Data.txt"))
+            {
+                string tempread = File.ReadAllText(localpath + "\\Vice\\Data.txt");
+                Data = JsonConvert.DeserializeObject<SaveData>(tempread, JsonSettings);
+                Data.AllowedToSave = true;
+
+                TvTargetVolume = Data.TvVolume;
+                SubTargetVolume = Data.SubVolume;
+            }
+        }
+
         // Runs at the end of the command - removes the document and writes to log
         private void WipeStem(string Command = "")
         {
             //File.WriteAllText(CommandStem, "Waiting");
 
-            File.Delete(CommandStem);
+            File.Delete(Data.CommandStem);
 
             if (Command != "")
             {
                 Console.WriteLine(Command);
                 Output += string.Format("\n" + DateTime.UtcNow + " - Command received: " + Command);
-                File.AppendAllText( LogLocation, DateTime.UtcNow + " - Command received: " + Command + Environment.NewLine);
+                File.AppendAllText( Data.LogLocation, DateTime.UtcNow + " - Command received: " + Command + Environment.NewLine);
                 //Output += "\n" + (DateTime.UtcNow - CommandRead).ToString();
             }
         }
@@ -270,26 +251,26 @@ namespace Vice
                 Thread.Sleep(100);
 
                 // if higher then waits till free then decreases
-                if (TvVolume > TvTargetVolume)
+                if (Data.TvVolume > TvTargetVolume)
                 {
                     RemoteWait.WaitOne();
                     RemoteWait.Reset();
 
                     SendSerial("BAR N");
-                    TvVolume--;
+                    Data.TvVolume--;
 
                     Thread.Sleep(100);
 
                     RemoteWait.Set();
                 }
                 // if Lower then waits till free then decreases
-                else if (TvVolume < TvTargetVolume)
+                else if (Data.TvVolume < TvTargetVolume)
                 {
                     RemoteWait.WaitOne();
                     RemoteWait.Reset();
 
                     SendSerial("BAR M");
-                    TvVolume++;
+                    Data.TvVolume++;
 
                     Thread.Sleep(100);
 
@@ -297,34 +278,35 @@ namespace Vice
                 }
 
                 // if higher then waits till free then decreases
-                else if (SubVolume > SubTargetVolume)
+                else if (Data.SubVolume > SubTargetVolume)
                 {
                     RemoteWait.WaitOne();
                     RemoteWait.Reset();
 
                     SendSerial("BAR P");
-                    SubVolume--;
+                    Data.SubVolume--;
 
                     Thread.Sleep(100);
 
                     RemoteWait.Set();
                 }
                 // if Lower then waits till free then decreases
-                else if (SubVolume < SubTargetVolume)
+                else if (Data.SubVolume < SubTargetVolume)
                 {
                     RemoteWait.WaitOne();
                     RemoteWait.Reset();
 
                     SendSerial("BAR O");
-                    SubVolume++;
+                    Data.SubVolume++;
 
                     Thread.Sleep(100);
 
                     RemoteWait.Set();
                 }
             }
-
         }
+
+
 
         // returns a number if 
         private int ReturnNumber(string no)
@@ -365,7 +347,7 @@ namespace Vice
             }
             catch (Exception ex)
             {
-                File.AppendAllText(LogLocation, ex.ToString());
+                File.AppendAllText(Data.LogLocation, ex.ToString());
             }
         }
 
@@ -416,7 +398,7 @@ namespace Vice
             }
             catch (Exception ex)
             {
-                File.AppendAllText(LogLocation, DateTime.UtcNow + " - Command Failed: " + "Volume Control" + Environment.NewLine
+                File.AppendAllText(Data.LogLocation, DateTime.UtcNow + " - Command Failed: " + "Volume Control" + Environment.NewLine
                     + ex + Environment.NewLine);
             }
 
@@ -547,7 +529,7 @@ namespace Vice
             if (command == "NightMode")
             {
                 SendSerial("BAR B");
-                NightMode = !NightMode;
+                Data.NightMode = !Data.NightMode;
             }
             else if (command == "Volume")
             {
@@ -580,13 +562,13 @@ namespace Vice
                     if (Direction == "Up")
                     {
                         SendSerial("BAR O", true, 240);
-                        SubVolume++;
+                        Data.SubVolume++;
                         SubTargetVolume++;
                     }
                     else if (Direction == "Down")
                     {
                         SendSerial("BAR P", true, 240);
-                        SubVolume--;
+                        Data.SubVolume--;
                         SubTargetVolume--;
                     }
                 }
@@ -595,13 +577,13 @@ namespace Vice
                 if (Direction == "Up")
                 {
                     SendSerial("BAR O");
-                    SubVolume++;
+                    Data.SubVolume++;
                     SubTargetVolume++;
                 }
                 else if (Direction == "Down")
                 {
                     SendSerial("BAR P");
-                    SubVolume--;
+                    Data.SubVolume--;
                     SubTargetVolume--;
                 }
             }
@@ -610,12 +592,12 @@ namespace Vice
                 if (Args == "TV")
                 {
                     SendSerial("TV 1");
-                    TvPower = !TvPower;
+                    Data.TvPower = !Data.TvPower;
                 }
                 else if (Args == "Bar")
                 {
                     SendSerial("BAR 0");
-                    BarPower = !BarPower;
+                    Data.BarPower = !Data.BarPower;
                 }
             }
             else if (command == "Tv Mode")
@@ -633,14 +615,14 @@ namespace Vice
                 if (Args == "Up" || Args == "UpW")
                 {
                     SendSerial("TV 5", true, 200);
-                    if (TvMode < 3)
-                        App.Current.Dispatcher.Invoke(() => { TvMode++; });
+                    if (Data.TvMode < 3)
+                        App.Current.Dispatcher.Invoke(() => { Data.TvMode++; });
                 }
                 else if (Args == "Down" || Args == "DownW")
                 {
                     SendSerial("TV 7", true, 200);
-                    if (TvMode > 1)
-                        App.Current.Dispatcher.Invoke(() => { TvMode--; });
+                    if (Data.TvMode > 1)
+                        App.Current.Dispatcher.Invoke(() => { Data.TvMode--; });
                 }
 
                 SendSerial("TV 9");
@@ -653,10 +635,10 @@ namespace Vice
             // Command for both tv off and hibernate
             else if(command == "Bed time")
             {
-                if (TvPower)
+                if (Data.TvPower)
                 {
                     SendSerial("TV 1");
-                    TvPower = !TvPower;
+                    Data.TvPower = !Data.TvPower;
                 }
 
                 Application.SetSuspendState(PowerState.Hibernate, true, false);
@@ -716,7 +698,7 @@ namespace Vice
             }
             catch (Exception ex)
             {
-                File.AppendAllText(LogLocation, ex.ToString());
+                File.AppendAllText(Data.LogLocation, ex.ToString());
             }
         }
 
@@ -755,12 +737,12 @@ namespace Vice
         {
             if (!ModeChanging)
             {
-                if (TvMode == 1)
+                if (Data.TvMode == 1)
                 {
                     TvUpCreater(true);
                     TvUpCreater();
                 }
-                else if (TvMode == 2)
+                else if (Data.TvMode == 2)
                     TvUpCreater();
             }
         }
@@ -770,11 +752,11 @@ namespace Vice
         {
             if (!ModeChanging)
             {
-                if (TvMode == 3)
+                if (Data.TvMode == 3)
                 {
                     TvDownCreater();
                 }
-                else if (TvMode == 1)
+                else if (Data.TvMode == 1)
                     TvUpCreater();
             }
         }
@@ -784,12 +766,12 @@ namespace Vice
         {
             if (!ModeChanging)
             {
-                if (TvMode == 3)
+                if (Data.TvMode == 3)
                 {
                     TvDownCreater(true);
                     TvDownCreater();
                 }
-                else if (TvMode == 2)
+                else if (Data.TvMode == 2)
                     TvDownCreater();
             }
         }
@@ -805,7 +787,7 @@ namespace Vice
             RemoteWait.Reset();
 
             SendSerial("BAR B");
-            NightMode = !NightMode;
+            Data.NightMode = !Data.NightMode;
 
             Thread.Sleep(100);
 
@@ -832,6 +814,32 @@ namespace Vice
                     _stopThread = new RelayCommand(param => StopThreadCom());
                 }
                 return _stopThread;
+            }
+        }
+
+        private ICommand _defaultTVPower;
+        public ICommand DefaultTVPower
+        {
+            get
+            {
+                if (_defaultTVPower == null)
+                {
+                    _defaultTVPower = new RelayCommand(param => Data.TvPower = !Data.TvPower);
+                }
+                return _defaultTVPower;
+            }
+        }
+
+        private RelayCommand _defaultBarPower;
+        public ICommand DefaultBarPower
+        {
+            get
+            {
+                if (_defaultBarPower == null)
+                {
+                    _defaultBarPower = new RelayCommand(param => Data.BarPower = !Data.BarPower);
+                }
+                return _defaultBarPower;
             }
         }
 
@@ -868,7 +876,7 @@ namespace Vice
             {
                 if (_defaultN == null)
                 {
-                    _defaultN = new RelayCommand(param => { TvMode = 3; });
+                    _defaultN = new RelayCommand(param => { Data.TvMode = 3; });
                 }
                 return _defaultN;
             }
@@ -881,7 +889,7 @@ namespace Vice
             {
                 if (_defaultC == null)
                 {
-                    _defaultC = new RelayCommand(param => { TvMode = 2; });
+                    _defaultC = new RelayCommand(param => { Data.TvMode = 2; });
                 }
                 return _defaultC;
             }
@@ -894,7 +902,7 @@ namespace Vice
             {
                 if (_defaultTC == null)
                 {
-                    _defaultTC = new RelayCommand(param => { TvMode = 1; });
+                    _defaultTC = new RelayCommand(param => { Data.TvMode = 1; });
                 }
                 return _defaultTC;
             }
@@ -1091,7 +1099,7 @@ namespace Vice
             {
                 if (_nightModeSwap == null)
                 {
-                    _nightModeSwap = new RelayCommand(param => { NightMode = !NightMode; });
+                    _nightModeSwap = new RelayCommand(param => { Data.NightMode = !Data.NightMode; });
                 }
                 return _nightModeSwap;
             }

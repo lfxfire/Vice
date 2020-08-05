@@ -124,12 +124,17 @@
 
                 </MenuItem>
                 <MenuItem Header="Defaults">
+                    <MenuItem Header="Power">
+                        <MenuItem Header="TV" Command="{Binding DefaultTVPower}"/>
+                        <MenuItem Header="Bar" Command="{Binding DefaultBarPower}"/>
+                    </MenuItem>
                     <MenuItem Header="Tv Mode">
                         <MenuItem Header="Normal" Command="{Binding DefaultN}"/>
                         <MenuItem Header="Cinema" Command="{Binding DefaultC}"/>
                         <MenuItem Header="True Cinema" Command="{Binding DefaultTC}"/>
                     </MenuItem>
                     <MenuItem Header="Night Mode" Command="{Binding NightModeSwap}"/>
+                    <MenuItem Header="Volume Reset" Command="{Binding VolumeReset}"/>
                 </MenuItem>
             </Menu>
         </DockPanel>
@@ -156,9 +161,9 @@
                 <StackPanel VerticalAlignment="Center">
                     <Label Content="Power" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="50">
-                        <Button Content="TV" Width="50" Height="35" Style="{StaticResource Cicle Button}" Margin="5,0" Background="{Binding TvPower, Converter={StaticResource Colour}}"
+                        <Button Content="TV" Width="50" Height="35" Style="{StaticResource Cicle Button}" Margin="5,0" Background="{Binding Data.TvPower, Converter={StaticResource Colour}}"
                             Command="{Binding PowerTvCommand}"/>
-                        <Button Content="Bar" Width="50" Height="35" Style="{StaticResource Cicle Button}" Margin="5,0" Background="{Binding BarPower, Converter={StaticResource Colour}}"
+                        <Button Content="Bar" Width="50" Height="35" Style="{StaticResource Cicle Button}" Margin="5,0" Background="{Binding Data.BarPower, Converter={StaticResource Colour}}"
                             Command="{Binding PowerBarCommand}"/>
                     </StackPanel>
                 </StackPanel>
@@ -174,11 +179,11 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel VerticalAlignment="Center">
-                        <Button Content="N" Style="{StaticResource ModeButton}" Background="{Binding TvMode, Converter={StaticResource IntCol}, ConverterParameter=3}"
+                        <Button Content="N" Style="{StaticResource ModeButton}" Background="{Binding Data.TvMode, Converter={StaticResource IntCol}, ConverterParameter=3}"
                                 Command="{Binding TvModeN}"/>
-                        <Button Content="C" Style="{StaticResource ModeButton}" Background="{Binding TvMode, Converter={StaticResource IntCol}, ConverterParameter=2}"
+                        <Button Content="C" Style="{StaticResource ModeButton}" Background="{Binding Data.TvMode, Converter={StaticResource IntCol}, ConverterParameter=2}"
                                 Command="{Binding TvModeC}"/>
-                        <Button Content="TC" Style="{StaticResource ModeButton}" Background="{Binding TvMode, Converter={StaticResource IntCol}, ConverterParameter=1}"
+                        <Button Content="TC" Style="{StaticResource ModeButton}" Background="{Binding Data.TvMode, Converter={StaticResource IntCol}, ConverterParameter=1}"
                                 Command="{Binding TvModeTC}"/>
                     </StackPanel>
                 </StackPanel>
@@ -187,12 +192,12 @@
                     <Label Content="Bar Volume" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" >
                         <ProgressBar Orientation="Vertical" Height="{Binding ElementName=Stack, Path=ActualHeight, Converter={StaticResource Modifier}, ConverterParameter=0.95}"
-                                     Style="{StaticResource VolumeBar}" Value="{Binding TvVolume, Converter={StaticResource Percentage}, ConverterParameter=50}" Margin="2,0"/>
+                                     Style="{StaticResource VolumeBar}" Value="{Binding Data.TvVolume, Converter={StaticResource Percentage}, ConverterParameter=50}" Margin="2,0"/>
                         <Slider Orientation="Vertical" Height="{Binding ElementName=Stack, Path=ActualHeight, Converter={StaticResource Offset}, ConverterParameter=16}"
                                 Margin="2,0" Minimum="0" Maximum="50" Value="{Binding TvTargetVolume}" TickPlacement="TopLeft" TickFrequency="5"/>
                         <StackPanel>
                             <Label Content="Current:" Padding="0" HorizontalAlignment="Center"/>
-                            <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding TvVolume}" 
+                            <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding Data.TvVolume}" 
                                    HorizontalContentAlignment="Center" FontSize="20" Padding="0"/>
                             <Label Content="Target:" Padding="0" HorizontalAlignment="Center"/>
                             <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding TvTargetVolume}"
@@ -209,12 +214,12 @@
                     <Label Content="Subwoofer Volume" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Name="Stack2">
                         <ProgressBar Orientation="Vertical" Height="{Binding ElementName=Stack2, Path=ActualHeight, Converter={StaticResource Modifier}, ConverterParameter=0.95}"
-                                     Style="{StaticResource VolumeBar}" Value="{Binding SubVolume, Converter={StaticResource Percentage}, ConverterParameter=12}" Margin="2,0"/>
+                                     Style="{StaticResource VolumeBar}" Value="{Binding Data.SubVolume, Converter={StaticResource Percentage}, ConverterParameter=12}" Margin="2,0"/>
                         <Slider Orientation="Vertical" Height="{Binding ElementName=Stack2, Path=ActualHeight, Converter={StaticResource Offset}, ConverterParameter=16}"
                                 Margin="2,0" Minimum="0" Maximum="12" Value="{Binding SubTargetVolume}" TickPlacement="TopLeft" TickFrequency="2"/>
                         <StackPanel>
                             <Label Content="Current:" Padding="0" HorizontalAlignment="Center"/>
-                            <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding SubVolume}" 
+                            <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding Data.SubVolume}" 
                                    HorizontalContentAlignment="Center" FontSize="20" Padding="0"/>
                             <Label Content="Target:" Padding="0" HorizontalAlignment="Center"/>
                             <Label Margin="5,0,5,5" BorderBrush="Black" BorderThickness="1" Height="30" Width="50" Content="{Binding SubTargetVolume}"

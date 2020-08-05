@@ -71,6 +71,7 @@ namespace Vice
         {
             MainVM.StopThreadCom();
             MainVM.StopVolumeThread();
+            MainVM.Data.SaveLocal();
             Current.Shutdown();
         }
 
