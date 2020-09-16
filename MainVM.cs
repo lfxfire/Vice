@@ -17,6 +17,7 @@ using System.Windows.Threading;
 using Vice.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using Vice.Commands;
 
 namespace Vice
 {
@@ -48,6 +49,8 @@ namespace Vice
 
             // Sets the port name incase its been changed
             ArdPort.PortName = Data.SerialPortName;
+
+            Sleeper.SleepTrigger += RemoteCommand;
         }
 
         #region Properties
@@ -91,6 +94,13 @@ namespace Vice
         {
             get => _data;
             set { _data = value; NotifyPropertyChanged();}
+        }
+
+        private SleepObject _sleepObject = new SleepObject();
+        public SleepObject Sleeper
+        {
+            get => _sleepObject;
+            set { _sleepObject = value; NotifyPropertyChanged(); }
         }
 
         static SerialPort ArdPort = new SerialPort("COM3", 9600, Parity.None, 8, StopBits.One);
@@ -305,8 +315,6 @@ namespace Vice
                 }
             }
         }
-
-
 
         // returns a number if 
         private int ReturnNumber(string no)
@@ -635,13 +643,25 @@ namespace Vice
             // Command for both tv off and hibernate
             else if(command == "Bed time")
             {
-                if (Data.TvPower)
+                if (Args == "")
                 {
-                    SendSerial("TV 1");
-                    Data.TvPower = !Data.TvPower;
-                }
+                    if (Data.TvPower)
+                    {
+                        SendSerial("TV 1");
+                        Data.TvPower = !Data.TvPower;
+                        // 6 second delay to account for state change
+                        Thread.Sleep(6000);
+                    }
 
-                Application.SetSuspendState(PowerState.Hibernate, true, false);
+                    Application.SetSuspendState(PowerState.Hibernate, true, false);
+                }
+                else
+                {
+                    Sleeper.Timer = int.Parse(Args);
+
+                    if (!Sleeper.Active)
+                        Sleeper.ButtonCom();
+                }
             }
 
             RemoteWait.Set();
@@ -869,6 +889,19 @@ namespace Vice
             }
         }
 
+        private RelayCommand _testCommand;
+        public ICommand TestCommandcom
+        {
+            get
+            {
+                if (_testCommand == null)
+                {
+                    _testCommand = new RelayCommand(param => BrightnessCom.Test());
+                }
+                return _testCommand;
+            }
+        }
+
         private RelayCommand _defaultN;
         public ICommand DefaultN
         {
@@ -905,6 +938,32 @@ namespace Vice
                     _defaultTC = new RelayCommand(param => { Data.TvMode = 1; });
                 }
                 return _defaultTC;
+            }
+        }
+
+        private RelayCommand _sleepStartStop;
+        public ICommand SleepStartStop
+        {
+            get
+            {
+                if (_sleepStartStop == null)
+                {
+                    _sleepStartStop = new RelayCommand(param => { Sleeper.ButtonCom(); });
+                }
+                return _sleepStartStop;
+            }
+        }
+
+        private RelayCommand _sleepFive;
+        public ICommand SleepFive
+        {
+            get
+            {
+                if (_sleepFive == null)
+                {
+                    _sleepFive = new RelayCommand(param => { Sleeper.Timer += 5; });
+                }
+                return _sleepFive;
             }
         }
 

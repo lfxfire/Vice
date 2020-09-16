@@ -6,5 +6,7 @@
     <ContextMenu x:Key="TheMenu">
         <MenuItem Header="Open" Command="{Binding Open}"/>
     </ContextMenu>
+
+
     
 </ResourceDictionary>

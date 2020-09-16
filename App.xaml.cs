@@ -67,10 +67,12 @@ namespace Vice
             NotifyIcon.Click += NotifyIcon_Click;
         }
 
+        // runs on exit docker button
         private void CloseWindow(object sender, EventArgs e)
         {
             MainVM.StopThreadCom();
             MainVM.StopVolumeThread();
+            MainVM.Sleeper.ForceShutdown();
             MainVM.Data.SaveLocal();
             Current.Shutdown();
         }

@@ -24,5 +24,20 @@ namespace Vice
         {
             InitializeComponent();
         }
+
+        // enter on the sleepbar
+        private void TextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                MainVM vm = DataContext as MainVM;
+                vm.Sleeper.Timer = int.Parse(SleepText.Text as string);
+
+                if (vm.Sleeper.Timer > 0)
+                    vm.Sleeper.ButtonCom();
+
+                //MoveFocus(new TraversalRequest(FocusNavigationDirection.Right));
+            }
+        }
     }
 }

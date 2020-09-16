@@ -7,6 +7,7 @@
         xmlns:Con="clr-namespace:Vice.Resources"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" Icon="Resources\Images\Marionette.ico">
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -20,7 +21,7 @@
             <Con:ColourIntConvert x:Key="IntCol"/>
             <Con:ValueMultiply x:Key="Modifier"/>
             <Con:Percentage x:Key="Percentage"/>
-            <Con:Offsetter x:Key="Offset"/>
+            <Con:Offsetter x:Key="Offset"/>            
             <SolidColorBrush x:Key="BaseColour" Color="#FFD4D4D4"/>
             <Style x:Key="Cicle Button" TargetType="Button">
                 <Setter Property="Template">
@@ -85,7 +86,7 @@
                             </Grid>
 
                             <ControlTemplate.Triggers>
-                                <DataTrigger Binding="{Binding NightMode}" Value="True">
+                                <DataTrigger Binding="{Binding Data.NightMode}" Value="True">
                                     <Setter Property="Background" Value="#FF404040"/>
                                     <Setter TargetName="Lab" Property="Foreground" Value="White"/>
                                     <Setter TargetName="Lab" Property="Content" Value="NightMode - On"/>
@@ -98,6 +99,45 @@
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
+            </Style>
+            <Style x:Key="SleepBox" TargetType="TextBox">
+                <Setter Property="BorderBrush" Value="DarkGray"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="OverridesDefaultStyle" Value="True"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                                <ScrollViewer x:Name="PART_ContentHost"
+                                          Focusable="false"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsFocused" Value="true">
+                        <Setter Property="BorderBrush" Value="Black"/>
+                    </Trigger>
+                    <DataTrigger Binding="{Binding Sleeper.Active}" Value="true">
+                        <Setter Property="BorderBrush" Value="Green"/>
+                        <Setter Property="BorderThickness" Value="3"/>
+                        <Setter Property="IsReadOnly" Value="True"/>
+                        <Setter Property="IsManipulationEnabled" Value="False"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="SleepButton" TargetType="Button">
+                <Setter Property="Content" Value="Start"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Sleeper.Active}" Value="true">
+                        <Setter Property="Content" Value="Stop"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Sleeper.Timer}" Value="0">
+                        <Setter Property="IsEnabled" Value="False"/>
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
         </Grid.Resources>
 
@@ -121,6 +161,7 @@
                         
                     </MenuItem>
                     <MenuItem Header="Test Serial" Command="{Binding SendCommand}"/>
+                    <MenuItem Header="Test" Command="{Binding TestCommandcom}"/>
 
                 </MenuItem>
                 <MenuItem Header="Defaults">
@@ -237,8 +278,15 @@
 
         <Border BorderThickness="0,2,0,2" BorderBrush="#FFAAA6A6" Grid.Row="1"/>
 
-        <Button Width="200" Height="50" Content="Stop" Command="{Binding StopThread}" Grid.Row="2" HorizontalAlignment="Left" Margin="20,0"/>
-        <Button Width="200" Height="50" Content="Start" Command="{Binding StartThread}" Grid.Row="2" HorizontalAlignment="Left" Margin="240,0,0,0"/>
+        <Button Width="80" Height="40" Content="Stop" Command="{Binding StopThread}" Grid.Row="2" HorizontalAlignment="Left" Margin="20,0"/>
+        <Button Width="80" Height="40" Content="Start" Command="{Binding StartThread}" Grid.Row="2" HorizontalAlignment="Left" Margin="120,0,0,0"/>
+
+        <TextBox Width="80" Height="40" Grid.Row="2" Margin="260,0" HorizontalAlignment="Left" HorizontalContentAlignment="Center"
+                 Text="{Binding Sleeper.Timer}" VerticalContentAlignment="Center" FontSize="15" Style="{StaticResource SleepBox}" KeyDown="TextBox_KeyDown" Name="SleepText"/>
+
+        <Button Width="60" Height="30" Grid.Row="2" HorizontalAlignment="Left" Margin="360,0,0,0" Command="{Binding SleepStartStop}" Style="{StaticResource SleepButton}"/>
+        <Button Width="40" Height="30" Content="+5" Grid.Row="2" HorizontalAlignment="Left" Margin="430,0,0,0" Command="{Binding SleepFive}"/>
+
         <Ellipse Width="30" Height="30" Fill="{Binding ActiveColour}" Grid.Row="2" HorizontalAlignment="Right" Margin="50,0" Stroke="Black"/>
 
     </Grid>
