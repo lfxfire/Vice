@@ -281,11 +281,12 @@
         <Button Width="80" Height="40" Content="Stop" Command="{Binding StopThread}" Grid.Row="2" HorizontalAlignment="Left" Margin="20,0"/>
         <Button Width="80" Height="40" Content="Start" Command="{Binding StartThread}" Grid.Row="2" HorizontalAlignment="Left" Margin="120,0,0,0"/>
 
-        <TextBox Width="80" Height="40" Grid.Row="2" Margin="260,0" HorizontalAlignment="Left" HorizontalContentAlignment="Center"
+        <TextBox Width="80" Height="40" Grid.Row="2" Margin="265,0" HorizontalAlignment="Left" HorizontalContentAlignment="Center" GotKeyboardFocus="SleepText_GotKeyboardFocus"
                  Text="{Binding Sleeper.Timer}" VerticalContentAlignment="Center" FontSize="15" Style="{StaticResource SleepBox}" KeyDown="TextBox_KeyDown" Name="SleepText"/>
 
-        <Button Width="60" Height="30" Grid.Row="2" HorizontalAlignment="Left" Margin="360,0,0,0" Command="{Binding SleepStartStop}" Style="{StaticResource SleepButton}"/>
-        <Button Width="40" Height="30" Content="+5" Grid.Row="2" HorizontalAlignment="Left" Margin="430,0,0,0" Command="{Binding SleepFive}"/>
+        <Button Width="60" Height="30" Grid.Row="2" HorizontalAlignment="Left" Margin="360,20,0,0" Command="{Binding SleepStartStop}" Style="{StaticResource SleepButton}"/>
+        <Button Width="40" Height="30" Content="+5" Grid.Row="2" HorizontalAlignment="Left" Margin="430,20,0,0" Command="{Binding SleepFive}"/>
+        <Label Content="Sleep Timer" Grid.Row="2" Margin="370,0,0,0" FontSize="15"/>
 
         <Ellipse Width="30" Height="30" Fill="{Binding ActiveColour}" Grid.Row="2" HorizontalAlignment="Right" Margin="50,0" Stroke="Black"/>
 

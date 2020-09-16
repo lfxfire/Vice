@@ -39,5 +39,11 @@ namespace Vice
                 //MoveFocus(new TraversalRequest(FocusNavigationDirection.Right));
             }
         }
+
+        private void SleepText_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (SleepText.Text == "0")
+                SleepText.Text = "";
+        }
     }
 }
