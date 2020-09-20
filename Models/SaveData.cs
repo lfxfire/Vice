@@ -12,6 +12,8 @@ namespace Vice.Models
 {
     public class SaveData : Notify
     {
+        public event EmptyEvent Saved;
+
         public bool AllowedToSave = false;
 
         private string _serialPort = "COM3";
@@ -67,21 +69,22 @@ namespace Vice.Models
             set { _nightMode = value; NotifyPropertyChanged(); StartThreadWait(); }
         }
 
-        // saves
+        // Saves
         public void SaveLocal()
         {
             JsonSerializerSettings JsonSettings = new JsonSerializerSettings() { Formatting = Formatting.Indented };
             string localpath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
             if (!Directory.Exists(localpath + "\\Vice"))
-                Directory.CreateDirectory(localpath + "\\Vice");
-            else
-            {
-                AllowedToSave = false;
-                string Tempwrite = JsonConvert.SerializeObject(this, JsonSettings);
-                AllowedToSave = true;
-                File.WriteAllText(localpath + "\\Vice\\Data.txt", Tempwrite);
-            }
+                Directory.CreateDirectory(localpath + "\\Vice");            
+            
+            AllowedToSave = false;
+            string Tempwrite = JsonConvert.SerializeObject(this, JsonSettings);
+            AllowedToSave = true;
+            File.WriteAllText(localpath + "\\Vice\\Data.txt", Tempwrite);
+
+            // Event to make circle flash
+            Saved();            
         }
 
         // Starts a thread with the wait timer

@@ -290,6 +290,7 @@
         <Button Width="40" Height="30" Content="+5" Grid.Row="2" HorizontalAlignment="Left" Margin="430,20,0,0" Command="{Binding SleepFive}"/>
 
         <Ellipse Width="30" Height="30" Fill="{Binding ActiveColour}" Grid.Row="2" HorizontalAlignment="Right" Margin="50,0" Stroke="Black"/>
+        <Ellipse Width="15" Height="15" Fill="{Binding ActiveColourSaver}" Grid.Row="2" HorizontalAlignment="Right" Margin="30,0" Stroke="Black"/>
 
     </Grid>
 </Window>

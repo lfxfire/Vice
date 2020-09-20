@@ -50,7 +50,9 @@ namespace Vice
             // Sets the port name incase its been changed
             ArdPort.PortName = Data.SerialPortName;
 
+            // Events
             Sleeper.SleepTrigger += RemoteCommand;
+            Data.Saved += SavedFlashStarter;
         }
 
         #region Properties
@@ -123,6 +125,14 @@ namespace Vice
         {
             get { return _activeColour; }
             set { _activeColour = value; NotifyPropertyChanged(); }
+        }
+
+        // Colour of the saver circle
+        private string _activeColourSaver = "White";
+        public string ActiveColourSaver
+        {
+            get { return _activeColourSaver; }
+            set { _activeColourSaver = value; NotifyPropertyChanged(); }
         }
 
         // in millseconds
@@ -358,6 +368,26 @@ namespace Vice
                 File.AppendAllText(Data.LogLocation, ex.ToString());
             }
         }
+
+        #region Save Flasher
+
+        // Starts the flash thread
+        private void SavedFlashStarter()
+        {
+            Thread SaveFlasher = new Thread(() => SaveFlash());
+            SaveFlasher.Start();
+        }
+
+        // Flashes the circle
+        private void SaveFlash()
+        {
+            // Sets colour light blue
+            ActiveColourSaver = "#FF3DC1FF";
+            Thread.Sleep(300);
+            ActiveColourSaver = "White";
+        }
+
+        #endregion Save Flasher
 
         #endregion Methods
 
@@ -619,24 +649,40 @@ namespace Vice
                 SendSerial("TV 6", true, 400);
                 SendSerial("TV 6", true, 800);
 
-                // goes up or down and adjusts the Tv mode value, Upw/DownW adds a wait for when a double stack is applied
+                // goes up or down and adjusts the Tv mode value, Upw/DownW does two commands rather than one
                 if (Args == "Up" || Args == "UpW")
                 {
                     SendSerial("TV 5", true, 200);
                     if (Data.TvMode < 3)
                         App.Current.Dispatcher.Invoke(() => { Data.TvMode++; });
+
+                    // Second up command
+                    if (Args == "UpW")
+                    {
+                        SendSerial("TV 5", true, 200);
+                        if (Data.TvMode < 3)
+                            App.Current.Dispatcher.Invoke(() => { Data.TvMode++; });
+                    }
                 }
                 else if (Args == "Down" || Args == "DownW")
                 {
                     SendSerial("TV 7", true, 200);
                     if (Data.TvMode > 1)
                         App.Current.Dispatcher.Invoke(() => { Data.TvMode--; });
+
+                    // Second down command
+                    if (Args == "DownW")
+                    {
+                        SendSerial("TV 7", true, 200);
+                        if (Data.TvMode > 1)
+                            App.Current.Dispatcher.Invoke(() => { Data.TvMode--; });
+                    }
                 }
 
-                SendSerial("TV 9");
+                SendSerial("TV 9", false, 500);
 
-                if (Args == "UpW" || Args == "DownW")
-                    Thread.Sleep(1000);
+                //if (Args == "UpW" || Args == "DownW")
+                //    Thread.Sleep(1000);
 
                 App.Current.Dispatcher.Invoke(() => { ModeChanging = false; });
             }
@@ -723,30 +769,32 @@ namespace Vice
         }
 
         // Creates a thread which turns Up the tv mode
-        public void TvUpCreater(bool Wait = false)
+        public void TvUpCreater(bool DoubleSend = false)
         {
-            if (!Wait)
+            if (!DoubleSend)
             {
                 var ThreadUp = new Thread(() => RemoteCommand("Tv Mode", "Up", false));
                 ThreadUp.Start();
             }
             else
             {
+                // does a double up
                 var ThreadUp = new Thread(() => RemoteCommand("Tv Mode", "UpW", false));
                 ThreadUp.Start();
             }
         }
 
         // Creates a thread which turns down the tv mode
-        public void TvDownCreater(bool Wait = false)
+        public void TvDownCreater(bool DoubleSend = false)
         {
-            if (!Wait)
+            if (!DoubleSend)
             {
                 var ThreadUp = new Thread(() => RemoteCommand("Tv Mode", "Down", false));
                 ThreadUp.Start();
             }
             else
             {
+                // does a double down
                 var ThreadUp = new Thread(() => RemoteCommand("Tv Mode", "DownW", false));
                 ThreadUp.Start();
             }
@@ -760,7 +808,7 @@ namespace Vice
                 if (Data.TvMode == 1)
                 {
                     TvUpCreater(true);
-                    TvUpCreater();
+                    //TvUpCreater();
                 }
                 else if (Data.TvMode == 2)
                     TvUpCreater();
@@ -789,7 +837,7 @@ namespace Vice
                 if (Data.TvMode == 3)
                 {
                     TvDownCreater(true);
-                    TvDownCreater();
+                    //TvDownCreater();
                 }
                 else if (Data.TvMode == 2)
                     TvDownCreater();

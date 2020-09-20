@@ -27,8 +27,8 @@
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>\\LFXFIRE\Public\Vice\</InstallUrl>
     <UpdateUrl>\\LFXFIRE\Public\Vice\</UpdateUrl>
-    <ApplicationRevision>10</ApplicationRevision>
-    <ApplicationVersion>1.1.0.%2a</ApplicationVersion>
+    <ApplicationRevision>1</ApplicationRevision>
+    <ApplicationVersion>1.1.1.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <CreateDesktopShortcut>true</CreateDesktopShortcut>
     <PublishWizardCompleted>true</PublishWizardCompleted>

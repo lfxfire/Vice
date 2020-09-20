@@ -7,4 +7,6 @@ using System.Threading.Tasks;
 namespace Vice.Resources
 {
     public delegate void StemEvent(string a, string b, bool c);
+
+    public delegate void EmptyEvent();
 }

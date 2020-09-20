@@ -45,7 +45,7 @@ namespace Vice.Commands
         public static void Test()
         {
             int monCount = 0;
-            Rect r = new Rect();
+            //Rect r = new Rect();
             MonitorEnumProc callback = (IntPtr hDesktop, IntPtr hdc, ref Rect prect, int d) => ++monCount > 0;
             if (EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, 0))
                 Console.WriteLine("You have {0} monitors", monCount);
