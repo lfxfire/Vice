@@ -613,7 +613,7 @@ namespace Vice
                 // Uses dispactcher so works from background thread
                 App.Current.Dispatcher.Invoke(() => { ModeChanging = true; });
 
-                // Changes the mode down/up 
+                // Opens the menu where the mode can be changed 
                 SendSerial("TV B", true, 400);
                 SendSerial("TV 6", true, 300);
                 SendSerial("TV 6", true, 400);

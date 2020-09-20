@@ -31,11 +31,22 @@ namespace Vice
             if (e.Key == Key.Enter)
             {
                 MainVM vm = DataContext as MainVM;
-                vm.Sleeper.Timer = int.Parse(SleepText.Text as string);
 
-                if (vm.Sleeper.Timer > 0)
-                    vm.Sleeper.ButtonCom();
+                try
+                {
 
+                    vm.Sleeper.Timer = int.Parse(SleepText.Text as string);
+
+                    if (vm.Sleeper.Timer > 0)
+                        vm.Sleeper.ButtonCom();
+                }
+                catch 
+                {
+                    vm.Sleeper.Timer = 0;
+                }
+
+                SleepText.MoveFocus(new TraversalRequest(FocusNavigationDirection.Right));
+                
                 //MoveFocus(new TraversalRequest(FocusNavigationDirection.Right));
             }
         }
@@ -44,6 +55,12 @@ namespace Vice
         {
             if (SleepText.Text == "0")
                 SleepText.Text = "";
+        }
+
+        private void SleepText_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (SleepText.Text == "")
+                SleepText.Text = "0";
         }
     }
 }
