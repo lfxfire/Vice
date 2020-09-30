@@ -158,7 +158,7 @@ namespace Vice
 
             while (!LoopKiller)
             {
-                Console.WriteLine("Checked");
+                //Console.WriteLine("Checked");
 
                 try
                 {
@@ -399,6 +399,8 @@ namespace Vice
             WipeStem("Volume Control " + Value);
             try
             {
+                //throw new Exception();
+
                 int Percentage = 0;
                 CoreAudioDevice defaultPlaybackDevice = new CoreAudioController().DefaultPlaybackDevice;
 

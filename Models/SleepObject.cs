@@ -40,19 +40,24 @@ namespace Vice.Models
             if (Timer < 1)
                 return;
 
-            if (SleepThread != null && Active)
+            if (Active)
             {
                 Active = false;
-                SleepEnd.WaitOne(300);
-                SleepThread = null;
+
+                if (SleepThread != null)
+                {
+                    SleepEnd.WaitOne(300);
+                    SleepThread = null;
+                }
             }
-            else if (SleepThread != null)
+            else
             {
-                SleepThread.Abort();
-                SleepThread = null;
-            }
-            else if (!Active)
-            {
+                if (SleepThread != null)
+                {
+                    SleepThread.Abort();
+                    SleepThread = null;
+                }
+
                 Active = true;
                 StartThread();                
             }
