@@ -26,6 +26,10 @@ namespace Vice
 
             MainWindow = new MainWindow();
             MainVM = new MainVM();
+
+            MainWindow.InitializeComponent();
+            MainWindow.DataContext = MainVM;
+            MainWindow.Show();
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -65,6 +69,7 @@ namespace Vice
             NotifyIcon.ContextMenu.MenuItems[1].Click += CloseWindow;
 
             NotifyIcon.Click += NotifyIcon_Click;
+
         }
 
         // runs on exit docker button

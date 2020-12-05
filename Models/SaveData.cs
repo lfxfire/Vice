@@ -69,6 +69,15 @@ namespace Vice.Models
             set { _nightMode = value; NotifyPropertyChanged(); StartThreadWait(); }
         }
 
+        // Value for what the sleep timer does, 0 = lock, 1 = sleep, 2 = hibernate, 3 = shutdown
+        private int _sleepLockValue = 0;
+        public int SleepLockValue
+        {
+            get => _sleepLockValue;
+            set { _sleepLockValue = value; NotifyPropertyChanged(); StartThreadWait(); }
+        }
+
+
         // Saves
         public void SaveLocal()
         {

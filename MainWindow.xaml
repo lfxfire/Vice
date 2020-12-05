@@ -176,6 +176,12 @@
                     </MenuItem>
                     <MenuItem Header="Night Mode" Command="{Binding NightModeSwap}"/>
                     <MenuItem Header="Volume Reset" Command="{Binding VolumeReset}"/>
+                    <MenuItem Header="Sleep Timer Mode">
+                        <MenuItem Header="Lock" IsCheckable="True" IsChecked="{Binding SleepLock}"/>
+                        <MenuItem Header="Sleep" IsCheckable="True" IsChecked="{Binding SleepSleep}"/>
+                        <MenuItem Header="Hibernate" IsCheckable="True" IsChecked="{Binding SleepHibernate}"/>
+                        <MenuItem Header="Power" IsCheckable="True" IsChecked="{Binding SleepPower}"/>
+                    </MenuItem>
                 </MenuItem>
             </Menu>
         </DockPanel>

@@ -83,6 +83,125 @@ namespace Vice
 
         #endregion Remote Holding Values
 
+        #region Sleep timer bools
+
+        // sets all the other bools to false when set to true
+        private bool _sleepLock = false;
+        public bool SleepLock
+        {
+            get => _sleepLock;
+            set
+            {
+                if (value)
+                {
+                    AllowSleepFunctionSetFalse = true;
+                    _sleepLock = value;
+
+                    //_sleepLock = false;
+                    SleepSleep = false;
+                    SleepHibernate = false;
+                    SleepPower = false;
+
+                    Data.SleepLockValue = 0;
+
+                    AllowSleepFunctionSetFalse = false;
+                }
+                else if (AllowSleepFunctionSetFalse)
+                    _sleepLock = value;
+
+                NotifyPropertyChanged();
+            }
+        }
+
+        // sets all the other bools to false when set to true
+        private bool _sleepSleep = false;
+        public bool SleepSleep
+        {
+            get => _sleepSleep;
+            set
+            {
+                if (value)
+                {
+                    AllowSleepFunctionSetFalse = true;
+                    _sleepSleep = value;
+
+                    SleepLock = false;
+                    //_sleepSleep = false;
+                    SleepHibernate = false;
+                    SleepPower = false;
+
+                    Data.SleepLockValue = 1;
+
+                    AllowSleepFunctionSetFalse = false;
+                }
+                else if (AllowSleepFunctionSetFalse)
+                    _sleepSleep = value;
+
+                NotifyPropertyChanged();
+            }
+        }
+
+        // sets all the other bools to false when set to true
+        private bool _sleepHibernate = false;
+        public bool SleepHibernate
+        {
+            get => _sleepHibernate;
+            set
+            {
+                if (value)
+                {
+                    AllowSleepFunctionSetFalse = true;
+                    _sleepHibernate = value;
+
+                    SleepLock = false;
+                    SleepSleep = false;
+                    //_sleepHibernate = false;
+                    SleepPower = false;
+
+                    Data.SleepLockValue = 2;
+
+                    AllowSleepFunctionSetFalse = false;
+                }
+                else if (AllowSleepFunctionSetFalse)
+                    _sleepHibernate = value;
+
+                NotifyPropertyChanged();
+            }
+        }
+
+        // sets all the other bools to false when set to true
+        private bool _sleepPower = false;
+        public bool SleepPower
+        {
+            get => _sleepPower;
+            set
+            {
+                if (value)
+                {
+                    AllowSleepFunctionSetFalse = true;
+                    _sleepPower = value;
+
+                    SleepLock = false;
+                    SleepSleep = false;
+                    SleepHibernate = false;
+                    //_sleepPower = false;
+
+                    Data.SleepLockValue = 3;
+
+                    AllowSleepFunctionSetFalse = false;
+                }
+                else if (AllowSleepFunctionSetFalse)
+                    _sleepPower = value;
+
+                NotifyPropertyChanged();
+            }
+        }
+
+        // bool which stops user from setting all sleep timer bools to false
+        private bool AllowSleepFunctionSetFalse;
+
+        #endregion Sleep timer bools
+
         private ManualResetEvent ExitWait = new ManualResetEvent(true);
         private ManualResetEvent RemoteWait = new ManualResetEvent(true);
 
@@ -228,6 +347,23 @@ namespace Vice
             ExitWait.Set();
         }
 
+        // Sets the value of the front end menu bools
+        private void AssignTimerBools()
+        {
+            if (Data != null)
+            {
+                // Sets the bool value based on Data's equivlent value
+                if (Data.SleepLockValue == 0)
+                    SleepLock = true;
+                else if (Data.SleepLockValue == 1)
+                    SleepSleep = true;
+                else if (Data.SleepLockValue == 2)
+                    SleepHibernate = true;
+                else if (Data.SleepLockValue == 3)
+                    SleepPower = true;
+            }
+        }
+
         // Reads the data file
         private void ReadLocal()
         {
@@ -245,6 +381,8 @@ namespace Vice
                 TvTargetVolume = Data.TvVolume;
                 SubTargetVolume = Data.SubVolume;
             }
+
+            AssignTimerBools();
         }
 
         // Runs at the end of the command - removes the document and writes to log
@@ -688,7 +826,7 @@ namespace Vice
 
                 App.Current.Dispatcher.Invoke(() => { ModeChanging = false; });
             }
-            // Command for both tv off and hibernate
+            // Command for both tv off and timer power
             else if(command == "Bed time")
             {
                 if (Args == "")
@@ -698,10 +836,18 @@ namespace Vice
                         SendSerial("TV 1");
                         Data.TvPower = !Data.TvPower;
                         // 6 second delay to account for state change
-                        Thread.Sleep(6000);
+                        Thread.Sleep(6000);                        
                     }
 
-                    Application.SetSuspendState(PowerState.Hibernate, true, false);
+                    // Carrys out the power mode set in data
+                    if (Data.SleepLockValue == 0)
+                        LockCommand();
+                    else if (Data.SleepLockValue == 1)
+                        SleepCommand();
+                    else if (Data.SleepLockValue == 2)
+                        HibernateCommand();
+                    else if (Data.SleepLockValue == 3)
+                        PowerCommand();
                 }
                 else
                 {
