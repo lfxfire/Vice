@@ -99,4 +99,34 @@ namespace Vice.Resources
         }
     }
 
+
+    // Varies the value of gradient change points to keep them in a fixed point as a % of the bars adjusted height
+    public class OffsetterColourbar : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            // Point where gradient point is located
+            double OffsetValue= double.Parse((string)parameter);
+
+            double no = (int)value;
+            double ValueRange;
+
+            // Converter Parameters 10.% are for subwoofer with 12 max value, else max value 50 for main
+            if (OffsetValue > 10)
+            {
+                OffsetValue -= 10;
+                ValueRange = 12;
+            }
+            else
+                ValueRange = 50;
+
+            double Final = ValueRange / no * OffsetValue;
+
+            return Final;
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

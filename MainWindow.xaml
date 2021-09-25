@@ -21,7 +21,8 @@
             <Con:ColourIntConvert x:Key="IntCol"/>
             <Con:ValueMultiply x:Key="Modifier"/>
             <Con:Percentage x:Key="Percentage"/>
-            <Con:Offsetter x:Key="Offset"/>            
+            <Con:Offsetter x:Key="Offset"/>
+            <Con:OffsetterColourbar x:Key="OffsetBar"/>
             <SolidColorBrush x:Key="BaseColour" Color="#FFD4D4D4"/>
             <Style x:Key="Cicle Button" TargetType="Button">
                 <Setter Property="Template">
@@ -239,7 +240,22 @@
                     <Label Content="Bar Volume" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" >
                         <ProgressBar Orientation="Vertical" Height="{Binding ElementName=Stack, Path=ActualHeight, Converter={StaticResource Modifier}, ConverterParameter=0.95}"
-                                     Style="{StaticResource VolumeBar}" Value="{Binding Data.TvVolume, Converter={StaticResource Percentage}, ConverterParameter=50}" Margin="2,0"/>
+                                     Style="{StaticResource VolumeBar}" Value="{Binding Data.TvVolume, Converter={StaticResource Percentage}, ConverterParameter=50}" Margin="2,0">
+                            <!--Value="{Binding Data.TvVolume, Converter={StaticResource Percentage}, ConverterParameter=50}"-->
+
+                            <ProgressBar.Foreground>
+                                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                    <LinearGradientBrush.RelativeTransform>
+                                        <RotateTransform CenterY="0.5" CenterX="0.5" Angle="270"/>
+                                        <!--<CompositeTransform CenterY="0.5" CenterX="0.5" Rotation="270"/>-->
+                                    </LinearGradientBrush.RelativeTransform>
+                                    <GradientStop Color="#FF06B025" Offset="0"/>
+                                    <GradientStop Color="#FF06B025" Offset="{Binding Data.TvVolume, Converter={StaticResource OffsetBar}, ConverterParameter=0.4}"/>
+                                    <GradientStop Color="#FFE1EC00" Offset="{Binding Data.TvVolume, Converter={StaticResource OffsetBar}, ConverterParameter=0.5}"/>
+                                    <GradientStop Color="Red" Offset="{Binding Data.TvVolume, Converter={StaticResource OffsetBar}, ConverterParameter=0.8}"/>
+                                </LinearGradientBrush>
+                            </ProgressBar.Foreground>
+                        </ProgressBar>
                         <Slider Orientation="Vertical" Height="{Binding ElementName=Stack, Path=ActualHeight, Converter={StaticResource Offset}, ConverterParameter=16}"
                                 Margin="2,0" Minimum="0" Maximum="50" Value="{Binding TvTargetVolume}" TickPlacement="TopLeft" TickFrequency="5"/>
                         <StackPanel>
@@ -261,7 +277,20 @@
                     <Label Content="Subwoofer Volume" HorizontalAlignment="Center" FontSize="15" Height="24" Padding="2"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Name="Stack2">
                         <ProgressBar Orientation="Vertical" Height="{Binding ElementName=Stack2, Path=ActualHeight, Converter={StaticResource Modifier}, ConverterParameter=0.95}"
-                                     Style="{StaticResource VolumeBar}" Value="{Binding Data.SubVolume, Converter={StaticResource Percentage}, ConverterParameter=12}" Margin="2,0"/>
+                                     Style="{StaticResource VolumeBar}" Value="{Binding Data.SubVolume, Converter={StaticResource Percentage}, ConverterParameter=12}" Margin="2,0">
+                            <ProgressBar.Foreground>
+                                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                    <LinearGradientBrush.RelativeTransform>
+                                        <RotateTransform CenterY="0.5" CenterX="0.5" Angle="270"/>
+                                        <!--<CompositeTransform CenterY="0.5" CenterX="0.5" Rotation="270"/>-->
+                                    </LinearGradientBrush.RelativeTransform>
+                                    <GradientStop Color="#FF06B025" Offset="0"/>
+                                    <GradientStop Color="#FF06B025" Offset="{Binding Data.SubVolume, Converter={StaticResource OffsetBar}, ConverterParameter=10.4}"/>
+                                    <GradientStop Color="#FFE1EC00" Offset="{Binding Data.SubVolume, Converter={StaticResource OffsetBar}, ConverterParameter=10.66}"/>
+                                    <GradientStop Color="Red" Offset="{Binding Data.SubVolume, Converter={StaticResource OffsetBar}, ConverterParameter=11}"/>
+                                </LinearGradientBrush>
+                            </ProgressBar.Foreground>
+                        </ProgressBar>
                         <Slider Orientation="Vertical" Height="{Binding ElementName=Stack2, Path=ActualHeight, Converter={StaticResource Offset}, ConverterParameter=16}"
                                 Margin="2,0" Minimum="0" Maximum="12" Value="{Binding SubTargetVolume}" TickPlacement="TopLeft" TickFrequency="2"/>
                         <StackPanel>
