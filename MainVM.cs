@@ -267,6 +267,17 @@ namespace Vice
 
         DateTime CommandRead;
 
+        // Bool for pausing commands being send to the IR transmitter
+        private bool pauseCommandBool = false;
+        public bool PauseCommandBool
+        {
+            get => pauseCommandBool;
+            set
+            {
+                pauseCommandBool = value;
+            }
+        }
+
         #endregion Properties
 
         #region Methods
@@ -485,6 +496,9 @@ namespace Vice
         // Sends down the serial connection
         private void SendSerial(string content, bool Continue = false, int WaitTime = 0)
         {
+            if (PauseCommandBool)
+                return;
+
             try
             {
                 if (!ArdPort.IsOpen)

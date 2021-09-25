@@ -145,22 +145,12 @@
         <DockPanel>
             <Menu DockPanel.Dock="Top" VerticalAlignment="Center">
                 <MenuItem Header="File">
-                    <MenuItem Header="Open Log"/>
-                    <MenuItem Header="Restart"/>
+                    <MenuItem Header="Exit"/>
+                    <!--<MenuItem Header="Open Log"/>
+                    <MenuItem Header="Restart"/>-->
                 </MenuItem>
                 <MenuItem Header="Commands">
-                    <MenuItem Header="Volume">
-                        
-                    </MenuItem>
-                    <MenuItem Header="Media">
-                        
-                    </MenuItem>
-                    <MenuItem Header="Power">
-                        
-                    </MenuItem>
-                    <MenuItem Header="Remote">
-                        
-                    </MenuItem>
+                    <MenuItem Header="Block Sending" IsCheckable="True" IsChecked="{Binding PauseCommandBool}"/>
                     <MenuItem Header="Test Serial" Command="{Binding SendCommand}"/>
                     <MenuItem Header="Test" Command="{Binding TestCommandcom}"/>
 
