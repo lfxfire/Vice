@@ -44,7 +44,10 @@ namespace Vice
         {
             ReadLocal();
 
-            StartThreadCom();
+            // Starts the polling thread if config says to by default
+            if (Data.DefaultStartPolling)
+                StartThreadCom();
+
             StartVolumeThread();
 
             // Sets the port name incase its been changed
@@ -282,7 +285,10 @@ namespace Vice
 
         #region Methods
 
-        private void Run()
+        #region Start up
+
+        // Main polling method
+        private void RunPolling()
         {
             ActiveColour = "Green";
 
@@ -395,6 +401,8 @@ namespace Vice
 
             AssignTimerBools();
         }
+
+        #endregion Start up
 
         // Runs at the end of the command - removes the document and writes to log
         private void WipeStem(string Command = "")
@@ -892,7 +900,7 @@ namespace Vice
         {
             LoopKiller = false;
             ExitWait.Reset();
-            MainThread = new Thread(new ThreadStart(Run));
+            MainThread = new Thread(new ThreadStart(RunPolling));
             MainThread.Start();
             NotifyPropertyChanged("Running");
         }

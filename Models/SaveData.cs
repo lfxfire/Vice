@@ -26,6 +26,8 @@ namespace Vice.Models
         public string CommandStem { get; set; } = "C:\\Users\\laure\\DropBox\\Vice Link\\CommandStem.txt";
         public string LogLocation { get; set; } = "C:\\Users\\laure\\Dropbox\\Vice Link\\ViceLog.txt";
 
+        public bool DefaultStartPolling { get; set; } = true;
+
         private bool _tvPower = true;
         public bool TvPower
         {
@@ -76,7 +78,6 @@ namespace Vice.Models
             get => _sleepLockValue;
             set { _sleepLockValue = value; NotifyPropertyChanged(); StartThreadWait(); }
         }
-
 
         // Saves
         public void SaveLocal()
