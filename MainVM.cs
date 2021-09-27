@@ -404,6 +404,20 @@ namespace Vice
 
         #endregion Start up
 
+        #region Shutdown
+
+        // Forces app to close in its entirety
+        private void ApplicationClose()
+        {
+            StopThreadCom();
+            StopVolumeThread();
+            Sleeper.ForceShutdown();
+            Data.SaveLocal();
+            App.Current.Shutdown();
+        }
+
+        #endregion Shutdown
+        
         // Runs at the end of the command - removes the document and writes to log
         private void WipeStem(string Command = "")
         {
@@ -1052,6 +1066,19 @@ namespace Vice
                     _stopThread = new RelayCommand(param => StopThreadCom());
                 }
                 return _stopThread;
+            }
+        }
+
+        private RelayCommand _exitButton;
+        public ICommand ExitButton
+        {
+            get
+            {
+                if (_exitButton == null)
+                {
+                    _exitButton = new RelayCommand(param => ApplicationClose());
+                }
+                return _exitButton;
             }
         }
 
