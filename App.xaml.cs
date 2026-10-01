@@ -77,6 +77,7 @@ namespace Vice
         {
             MainVM.StopThreadCom();
             MainVM.StopVolumeThread();
+            MainVM.StopPhoneApi();
             MainVM.Sleeper.ForceShutdown();
             MainVM.Data.SaveLocal();
             Current.Shutdown();

@@ -142,6 +142,7 @@
     <Compile Include="Resources\Notify.cs" />
     <Compile Include="Resources\RelayCommand.cs" />
     <Compile Include="Resources\Statics.cs" />
+    <Compile Include="Server\PhoneApiServer.cs" />
     <Compile Include="Webhook.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
