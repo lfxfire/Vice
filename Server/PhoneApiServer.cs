@@ -199,7 +199,16 @@ namespace Vice.Server
 
             string text;
             using (var reader = new StreamReader(request.InputStream, Encoding.UTF8))
-                text = reader.ReadToEnd();
+            {
+                // Chunked uploads don't say their length up front, so the limit is also applied while reading
+                char[] buffer = new char[MaxBodyBytes + 1];
+                int length = reader.ReadBlock(buffer, 0, buffer.Length);
+
+                if (length > MaxBodyBytes)
+                    return null;
+
+                text = new string(buffer, 0, length);
+            }
 
             try
             {

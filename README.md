@@ -76,8 +76,20 @@ curl -H "Authorization: Bearer ABCD-EFGH-JKMN-PQRS-TUVW" -d "{\"command\":\"TV V
 | `TV Mode` | `Normal`, `Cinema`, `True Cinema` | | Switches picture mode |
 | `Sleep Timer` | `Add 5`, `Set 30`, `Start`, `Stop` | | Sleep timer |
 
-Numbers can be digits or words up to nineteen ("five"), for voice assistants. An unknown command is logged and rejected instead of being ignored.
+Numbers can be digits or words up to nineteen ("five"), for voice assistants. An unknown command is logged and rejected instead of being ignored, and so is a value Vice can't read, such as a blank volume, rather than being treated as 0.
 
 ## Building
 
 Open `Vice.sln` in Visual Studio on Windows (.NET Framework 4.7.2). Vice is Windows-only.
+
+## Installing
+
+Vice installs with ClickOnce from a folder on this PC, `D:\Storage\Public\Vice` (`PublishUrl` in `Vice.csproj`). The installed copy checks that folder for a newer version each time it starts.
+
+1. If Settings > Apps > Installed apps lists an old **Vice - 1**, uninstall it. It's a 2020 build that updates from the PC's old network name, so it never updates.
+2. Double-click `Publish.cmd`. It builds the installer into the folder above and moves `Vice.csproj` on to the next version.
+3. Run `D:\Storage\Public\Vice\setup.exe` and choose **Install**. Windows says the publisher can't be verified because the installer isn't signed.
+
+To update, publish again and restart Vice.
+
+To publish from Visual Studio instead, use **Project > Properties > Publish > Publish Now**. Avoid the Publish Wizard: it turns manifest signing back on, and an installed copy refuses an update signed differently from itself.

@@ -20,9 +20,11 @@ namespace Vice
         void App_Startup(object sender, StartupEventArgs e)
         {
             Console.WriteLine("App Started");
-            IconSetup();
 
+            // Hooked up first so a crash during start up still reaches the log
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
+            IconSetup();
 
             MainWindow = new MainWindow();
             MainVM = new MainVM();

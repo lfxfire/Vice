@@ -487,22 +487,23 @@ namespace Vice
             }
         }
 
-        // returns a number if 
+        // returns a number if it can read one, otherwise 0
         private int ReturnNumber(string no)
         {
-            int output = 0;
-            try
-            {
-                output = int.Parse(no);
-            }
-            catch
-            {
-                output = Statics.NumList.IndexOf((no ?? "").Trim().ToLower());
-                if (output < 0)
-                    output = 0;
-            }
+            int output;
+            return TryReturnNumber(no, out output) ? output : 0;
+        }
 
-            return output;
+        // Reads digits or a number word up to nineteen ("five"). False when it's neither
+        private bool TryReturnNumber(string no, out int number)
+        {
+            no = (no ?? "").Trim().ToLower();
+
+            if (int.TryParse(no, out number))
+                return true;
+
+            number = Statics.NumList.IndexOf(no);
+            return number >= 0;
         }
 
         // Sends down the serial connection
@@ -589,6 +590,8 @@ namespace Vice
 
                     // Sound Options
                     case "Volume Control":
+                        if (value != "Mute" && !TryAdjustValue(value, 0, 0, 100, out _))
+                            return CommandFailed(command, "Volume Control needs Mute, Up 10, Down 10 or a number");
                         VolumeCommand(value);
                         break;
                     case "Media Control":
@@ -610,11 +613,15 @@ namespace Vice
                     // Soundbar volume, moved by the volume thread towards the target
                     case "TV Volume":
                         LogCommand("TV Volume " + value);
-                        TvTargetVolume = AdjustValue(value, TvTargetVolume, 0, 50);
+                        if (!TryAdjustValue(value, TvTargetVolume, 0, 50, out int tvVolume))
+                            return CommandFailed(command, "TV Volume needs Up 2, Down 2, Set 30 or a number");
+                        TvTargetVolume = tvVolume;
                         break;
                     case "Woofer Volume":
                         LogCommand("Woofer Volume " + value);
-                        SubTargetVolume = AdjustValue(value, SubTargetVolume, 0, 12);
+                        if (!TryAdjustValue(value, SubTargetVolume, 0, 12, out int wooferVolume))
+                            return CommandFailed(command, "Woofer Volume needs Up 2, Down 2, Set 6 or a number");
+                        SubTargetVolume = wooferVolume;
                         break;
 
                     case "TV Mode":
@@ -644,8 +651,10 @@ namespace Vice
                             if (Sleeper.Active)
                                 Sleeper.ButtonCom();
                         }
+                        else if (TryAdjustValue(value.Replace("Add", "Up"), Sleeper.Timer, 0, 600, out int minutes))
+                            Sleeper.Timer = minutes;
                         else
-                            Sleeper.Timer = AdjustValue(value.Replace("Add", "Up"), Sleeper.Timer, 0, 600);
+                            return CommandFailed(command, "Sleep Timer needs Add 5, Set 30, Start or Stop");
                         break;
 
                     default:
@@ -673,22 +682,40 @@ namespace Vice
             return CommandResult.Failure(reason);
         }
 
-        // Applies "Up 5", "Down 2", "Set 30" or a bare number to a value, keeping it in range
-        private int AdjustValue(string value, int current, int min, int max)
+        // Applies "Up 5", "Down 2", "Set 30" or a bare number to a value, keeping it in range.
+        // Returns false when the value can't be read, so an empty or garbled command can't zero the volume
+        private bool TryAdjustValue(string value, int current, int min, int max, out int result)
         {
-            string[] parts = value.Split(' ');
-            int result;
+            string[] parts = (value ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            int number = 0;
+            result = current;
 
-            if (parts[0] == "Up")
-                result = current + StepAmount(value);
-            else if (parts[0] == "Down")
-                result = current - StepAmount(value);
-            else if (parts[0] == "Set" && parts.Length > 1)
-                result = ReturnNumber(parts[1]);
+            if (parts.Length == 0)
+                return false;
+
+            if (parts[0] == "Up" || parts[0] == "Down")
+            {
+                // No count means one step, but a count that can't be read is refused
+                if (parts.Length > 1 && !TryReturnNumber(parts[1], out number))
+                    return false;
+
+                int step = Math.Max(1, number);
+                result = parts[0] == "Up" ? current + step : current - step;
+            }
+            else if (parts[0] == "Set")
+            {
+                if (parts.Length < 2 || !TryReturnNumber(parts[1], out number))
+                    return false;
+
+                result = number;
+            }
+            else if (TryReturnNumber(parts[0], out number))
+                result = number;
             else
-                result = ReturnNumber(parts[0]);
+                return false;
 
-            return Math.Max(min, Math.Min(max, result));
+            result = Math.Max(min, Math.Min(max, result));
+            return true;
         }
 
         // Snapshot of what Vice believes the TV, soundbar and timer are doing, for the phone app
@@ -713,46 +740,19 @@ namespace Vice
             };
         }
 
-        // sets the volume
+        // sets the PC volume from "Mute", "Up 10", "Down 10" or a number
         private void VolumeCommand(string Value = "0" )
         {
             LogCommand("Volume Control " + Value);
             try
             {
-                //throw new Exception();
-
-                int Percentage = 0;
                 CoreAudioDevice defaultPlaybackDevice = new CoreAudioController().DefaultPlaybackDevice;
 
+                int Percentage;
                 if (Value == "Mute")
                     Percentage = 0;
-                else if (Value.Split(' ')[0] == "Down")
-                {
-                    double CheckVal = defaultPlaybackDevice.Volume - ReturnNumber(Value.Split(' ')[1]);
-                    if (CheckVal < 0)
-                        CheckVal = 0;
-
-                    defaultPlaybackDevice.Volume = CheckVal;
+                else if (!TryAdjustValue(Value, (int)Math.Round(defaultPlaybackDevice.Volume), 0, 100, out Percentage))
                     return;
-                }
-                else if (Value.Split(' ')[0] == "Up")
-                {
-                    double CheckVal = defaultPlaybackDevice.Volume + ReturnNumber(Value.Split(' ')[1]);
-                    if (CheckVal > 100)
-                        CheckVal = 100;
-
-                    defaultPlaybackDevice.Volume = CheckVal;
-                    return;
-                }
-                else
-                {
-                    Percentage = ReturnNumber(Value);
-
-                    if (Percentage > 100)
-                        Percentage = 100;
-                    else if (Percentage < 0)
-                        Percentage = 0;
-                }
 
                 defaultPlaybackDevice.Volume = Percentage;
             }
