@@ -52,7 +52,9 @@ namespace Vice
         private void IconSetup()
         {
             NotifyIcon.Visible = true;
-            NotifyIcon.Icon = new System.Drawing.Icon(@"C:\Users\laure\source\repos\Vice\Resources\Images\Marionette.ico");
+            // Loaded from the icon built into Vice.exe, so it works wherever the project is cloned
+            using (Stream iconStream = GetResourceStream(new Uri("pack://application:,,,/Vice;component/Resources/Images/Marionette.ico")).Stream)
+                NotifyIcon.Icon = new System.Drawing.Icon(iconStream);
             NotifyIcon.ContextMenu = new ContextMenu();
 
             NotifyIcon.ContextMenu.MenuItems.Add(new MenuItem()
