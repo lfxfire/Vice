@@ -2,16 +2,13 @@
 
 Android app with buttons for Vice: TV and soundbar power, soundbar and woofer volume (hold to keep going), night mode, picture mode, PC media keys and volume, the sleep timer, and lock / sleep / bed time / shut down for the PC. It shows what Vice thinks the TV and soundbar are doing and refreshes every few seconds while it's open.
 
-It talks to Vice's phone API over Tailscale. Setting up the PC side is in the [main README](../README.md#phone-control-with-vice-remote).
+It talks to Vice's phone API over Tailscale.
 
-## Build and install on your phone
+## Getting it onto your phone
 
-1. Install [Android Studio](https://developer.android.com/studio).
-2. **File > Open** and pick this `ViceRemote` folder. Let Gradle sync. If Android Studio offers to update the Android Gradle plugin or library versions, that's fine to accept.
-3. On the phone, turn on Developer options and USB debugging, plug it in, and press **Run**.
-4. In the app, enter the PC address, port and pairing code from Vice's **Phone > Show pairing details**.
+The main README has the whole setup in order, including building the app with Android Studio and installing it over USB: [Setup, step by step](../README.md#setup-step-by-step).
 
-Code layout:
+## Code
 
 - `data/ViceClient.kt` makes the HTTP calls and turns failures into readable messages
 - `data/Commands.kt` lists every button's command
@@ -48,5 +45,5 @@ Before each new upload, raise `versionCode` (and usually `versionName`) in `app/
 ## Notes
 
 - The app uses plain HTTP to Vice. That's deliberate: traffic goes through Tailscale, which encrypts it end to end. `res/xml/network_security_config.xml` allows it.
-- Library versions in `app/build.gradle.kts` were current when this was written. Android Studio's suggested upgrades are safe to take.
+- The Gradle plugin, Kotlin and library versions are pinned in the two `build.gradle.kts` files. Android Studio's suggested upgrades are optional. A major Android Gradle plugin upgrade can need changes to the build files, so take that one on purpose, not during setup.
 - Play requires new apps and updates to target a recent Android version. If the console rejects the upload over `targetSdk`, raise `compileSdk` and `targetSdk` to the version it names.
