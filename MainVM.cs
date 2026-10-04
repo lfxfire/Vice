@@ -18,6 +18,7 @@ using Vice.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Vice.Commands;
+using Vice.Server;
 
 namespace Vice
 {
@@ -56,6 +57,8 @@ namespace Vice
             // Events
             Sleeper.SleepTrigger += RemoteCommand;
             Data.Saved += SavedFlashStarter;
+
+            StartPhoneApi(true);
         }
 
         #region Properties
@@ -206,12 +209,14 @@ namespace Vice
         #endregion Sleep timer bools
 
         private ManualResetEvent ExitWait = new ManualResetEvent(true);
-        private ManualResetEvent RemoteWait = new ManualResetEvent(true);
+        // Only one thing may talk to the IR transmitter at a time. Always release in a finally block,
+        // otherwise one failed command blocks every later one
+        private readonly SemaphoreSlim RemoteLock = new SemaphoreSlim(1, 1);
 
         Thread MainThread;
         Thread VolumeThread;
 
-        private bool VolumeKiller = false;
+        private volatile bool VolumeKiller = false;
 
         private SaveData _data = new SaveData();
         public SaveData Data
@@ -229,7 +234,7 @@ namespace Vice
 
         static SerialPort ArdPort = new SerialPort("COM3", 9600, Parity.None, 8, StopBits.One);
 
-        private bool LoopKiller = false;
+        private volatile bool LoopKiller = false;
 
         public bool Running
         {
@@ -307,40 +312,24 @@ namespace Vice
 
                         string[] ReadLines = File.ReadAllLines(Data.CommandStem);
 
-                        string TestWord = ReadLines[0];
-                        string ValueWord = "";
-                        string SecondValueWord = "";
+                        // Deletes the file before running so a bad or crashing command is never re-read
+                        File.Delete(Data.CommandStem);
 
-                        // if attached parameter, sets from additional line, and for 3rd line
-                        if (ReadLines.Length > 1)
-                            ValueWord = ReadLines[1];                        
-                        if (ReadLines.Length > 2)
-                            SecondValueWord = ReadLines[2];
+                        // Dropbox can create the file before its contents arrive
+                        if (ReadLines.Length > 0)
+                        {
+                            string TestWord = ReadLines[0];
+                            string ValueWord = "";
+                            string SecondValueWord = "";
 
-                        if (TestWord == "Test")
-                            TestCommand();
+                            // if attached parameter, sets from additional line, and for 3rd line
+                            if (ReadLines.Length > 1)
+                                ValueWord = ReadLines[1];
+                            if (ReadLines.Length > 2)
+                                SecondValueWord = ReadLines[2];
 
-                        // Power Options
-                        else if (TestWord == "Lock")
-                            LockCommand();
-                        else if (TestWord == "Sleep")
-                            SleepCommand();
-                        else if (TestWord == "Hibernate")
-                            HibernateCommand();
-                        else if (TestWord == "PowerOff")
-                            PowerCommand();
-
-                        // Sound Options
-                        else if (TestWord == "Volume Control")
-                            VolumeCommand(ValueWord);
-                        else if (TestWord == "Media Control")
-                            MediaCommand(ValueWord);
-
-                        // Control Options
-                        else if (TestWord == "Type")
-                            TypeCommand(ValueWord);
-                        else if (TestWord == "Remote")
-                            RemoteCommand(ValueWord, SecondValueWord);
+                            ExecuteCommand(TestWord, ValueWord, SecondValueWord);
+                        }
 
                         Thread.Sleep(LightInterval);
                     }
@@ -353,8 +342,13 @@ namespace Vice
                 }
                 catch (Exception ex)
                 {
-                    File.Delete(Data.CommandStem);
-                    File.AppendAllText(Data.LogLocation, ex.ToString());
+                    // Dropbox can still have the file locked, so this delete must not take the thread down
+                    try
+                    {
+                        File.Delete(Data.CommandStem);
+                        File.AppendAllText(Data.LogLocation, DateTime.UtcNow + " - Polling error: " + ex + Environment.NewLine);
+                    }
+                    catch { }
                 }
 
                 ActiveColour = "Green";
@@ -411,6 +405,7 @@ namespace Vice
         {
             StopThreadCom();
             StopVolumeThread();
+            StopPhoneApi();
             Sleeper.ForceShutdown();
             Data.SaveLocal();
             App.Current.Shutdown();
@@ -418,21 +413,34 @@ namespace Vice
 
         #endregion Shutdown
         
-        // Runs at the end of the command - removes the document and writes to log
-        private void WipeStem(string Command = "")
+        // Writes the command to the output box and log. The polling loop deletes the command file itself,
+        // because commands can now also arrive from the phone API
+        private void LogCommand(string Command = "")
         {
-            //File.WriteAllText(CommandStem, "Waiting");
+            if (Command == "")
+                return;
 
-            File.Delete(Data.CommandStem);
+            Console.WriteLine(Command);
+            LogEvent("Command received: " + Command);
+        }
 
-            if (Command != "")
+        // Writes a line to the output box and log
+        private void LogEvent(string message)
+        {
+            // Commands can arrive on the polling thread and phone API threads at the same time
+            lock (LogLock)
             {
-                Console.WriteLine(Command);
-                Output += string.Format("\n" + DateTime.UtcNow + " - Command received: " + Command);
-                File.AppendAllText( Data.LogLocation, DateTime.UtcNow + " - Command received: " + Command + Environment.NewLine);
-                //Output += "\n" + (DateTime.UtcNow - CommandRead).ToString();
+                Output += "\n" + DateTime.UtcNow + " - " + message;
+
+                try
+                {
+                    File.AppendAllText(Data.LogLocation, DateTime.UtcNow + " - " + message + Environment.NewLine);
+                }
+                catch { }
             }
         }
+
+        private readonly object LogLock = new object();
 
         // Checks and changes the volume
         private void VolChange()
@@ -441,78 +449,61 @@ namespace Vice
             {
                 Thread.Sleep(100);
 
-                // if higher then waits till free then decreases
+                // Works out which single step moves the stored volumes towards their targets
+                string step = null;
                 if (Data.TvVolume > TvTargetVolume)
-                {
-                    RemoteWait.WaitOne();
-                    RemoteWait.Reset();
-
-                    SendSerial("BAR N");
-                    Data.TvVolume--;
-
-                    Thread.Sleep(100);
-
-                    RemoteWait.Set();
-                }
-                // if Lower then waits till free then decreases
+                    step = "BAR N";
                 else if (Data.TvVolume < TvTargetVolume)
-                {
-                    RemoteWait.WaitOne();
-                    RemoteWait.Reset();
-
-                    SendSerial("BAR M");
-                    Data.TvVolume++;
-
-                    Thread.Sleep(100);
-
-                    RemoteWait.Set();
-                }
-
-                // if higher then waits till free then decreases
+                    step = "BAR M";
                 else if (Data.SubVolume > SubTargetVolume)
-                {
-                    RemoteWait.WaitOne();
-                    RemoteWait.Reset();
-
-                    SendSerial("BAR P");
-                    Data.SubVolume--;
-
-                    Thread.Sleep(100);
-
-                    RemoteWait.Set();
-                }
-                // if Lower then waits till free then decreases
+                    step = "BAR P";
                 else if (Data.SubVolume < SubTargetVolume)
-                {
-                    RemoteWait.WaitOne();
-                    RemoteWait.Reset();
+                    step = "BAR O";
 
-                    SendSerial("BAR O");
-                    Data.SubVolume++;
+                if (step == null)
+                    continue;
+
+                // waits till free then steps
+                RemoteLock.Wait();
+                try
+                {
+                    SendSerial(step);
+
+                    if (step == "BAR N")
+                        Data.TvVolume--;
+                    else if (step == "BAR M")
+                        Data.TvVolume++;
+                    else if (step == "BAR P")
+                        Data.SubVolume--;
+                    else
+                        Data.SubVolume++;
 
                     Thread.Sleep(100);
-
-                    RemoteWait.Set();
+                }
+                finally
+                {
+                    RemoteLock.Release();
                 }
             }
         }
 
-        // returns a number if 
+        // returns a number if it can read one, otherwise 0
         private int ReturnNumber(string no)
         {
-            int output = 0;
-            try
-            {
-                output = int.Parse(no);
-            }
-            catch
-            {
-                output = Statics.NumList.IndexOf(no.ToLower());
-                if (output < 0)
-                    output = 0;
-            }
+            int output;
+            return TryReturnNumber(no, out output) ? output : 0;
+        }
 
-            return output;
+        // Reads digits or a number word up to nineteen ("five"). False when it's neither
+        private bool TryReturnNumber(string no, out int number)
+        {
+            no = (no ?? "").Trim().ToLower();
+
+            if (int.TryParse(no, out number))
+                return true;
+
+            number = Statics.NumList.IndexOf(no);
+            return number >= 0;
         }
 
         // Sends down the serial connection
@@ -567,46 +558,201 @@ namespace Vice
 
         #region Stem Commands
 
-        // sets the volume
-        private void VolumeCommand(string Value = "0" )
+        // Runs one command. Used by both the Dropbox command file and the phone API.
+        // command, value and value2 match lines 1, 2 and 3 of the command file
+        public CommandResult ExecuteCommand(string command, string value = "", string value2 = "")
         {
-            WipeStem("Volume Control " + Value);
+            command = (command ?? "").Trim();
+            value = (value ?? "").Trim();
+            value2 = (value2 ?? "").Trim();
+
             try
             {
-                //throw new Exception();
+                switch (command)
+                {
+                    case "Test":
+                        TestCommand();
+                        break;
 
-                int Percentage = 0;
+                    // Power Options
+                    case "Lock":
+                        LockCommand();
+                        break;
+                    case "Sleep":
+                        SleepCommand();
+                        break;
+                    case "Hibernate":
+                        HibernateCommand();
+                        break;
+                    case "PowerOff":
+                        PowerCommand();
+                        break;
+
+                    // Sound Options
+                    case "Volume Control":
+                        if (value != "Mute" && !TryAdjustValue(value, 0, 0, 100, out _))
+                            return CommandFailed(command, "Volume Control needs Mute, Up 10, Down 10 or a number");
+                        VolumeCommand(value);
+                        break;
+                    case "Media Control":
+                        if (value != "Next" && value != "Previous" && value != "Play/Pause")
+                            return CommandFailed(command, "Media Control needs Next, Previous or Play/Pause");
+                        MediaCommand(value);
+                        break;
+
+                    // Control Options
+                    case "Type":
+                        TypeCommand(value);
+                        break;
+                    case "Remote":
+                        if (!RemoteCommandNames.Contains(value))
+                            return CommandFailed(command, "Unknown remote command: " + value);
+                        RemoteCommand(value, value2);
+                        break;
+
+                    // Soundbar volume, moved by the volume thread towards the target
+                    case "TV Volume":
+                        LogCommand("TV Volume " + value);
+                        if (!TryAdjustValue(value, TvTargetVolume, 0, 50, out int tvVolume))
+                            return CommandFailed(command, "TV Volume needs Up 2, Down 2, Set 30 or a number");
+                        TvTargetVolume = tvVolume;
+                        break;
+                    case "Woofer Volume":
+                        LogCommand("Woofer Volume " + value);
+                        if (!TryAdjustValue(value, SubTargetVolume, 0, 12, out int wooferVolume))
+                            return CommandFailed(command, "Woofer Volume needs Up 2, Down 2, Set 6 or a number");
+                        SubTargetVolume = wooferVolume;
+                        break;
+
+                    case "TV Mode":
+                        if (ModeChanging)
+                            return CommandFailed(command, "The TV mode is already changing");
+                        LogCommand("TV Mode " + value);
+                        if (value == "Normal")
+                            TvModeComN();
+                        else if (value == "Cinema")
+                            TvModeComC();
+                        else if (value == "True Cinema")
+                            TvModeComTC();
+                        else
+                            return CommandFailed(command, "TV Mode needs Normal, Cinema or True Cinema");
+                        break;
+
+                    case "Sleep Timer":
+                        LogCommand("Sleep Timer " + value);
+                        string action = value.Split(' ')[0];
+                        if (action == "Start")
+                        {
+                            if (!Sleeper.Active)
+                                Sleeper.ButtonCom();
+                        }
+                        else if (action == "Stop")
+                        {
+                            if (Sleeper.Active)
+                                Sleeper.ButtonCom();
+                        }
+                        else if (TryAdjustValue(value.Replace("Add", "Up"), Sleeper.Timer, 0, 600, out int minutes))
+                            Sleeper.Timer = minutes;
+                        else
+                            return CommandFailed(command, "Sleep Timer needs Add 5, Set 30, Start or Stop");
+                        break;
+
+                    default:
+                        return CommandFailed(command, "Unknown command: " + command);
+                }
+
+                return CommandResult.Success();
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    File.AppendAllText(Data.LogLocation, DateTime.UtcNow + " - Command Failed: " + command + Environment.NewLine + ex + Environment.NewLine);
+                }
+                catch { }
+
+                return CommandResult.Failure(ex.Message);
+            }
+        }
+
+        // Logs a rejected command and returns the failure
+        private CommandResult CommandFailed(string command, string reason)
+        {
+            LogCommand("Rejected " + command + " - " + reason);
+            return CommandResult.Failure(reason);
+        }
+
+        // Applies "Up 5", "Down 2", "Set 30" or a bare number to a value, keeping it in range.
+        // Returns false when the value can't be read, so an empty or garbled command can't zero the volume
+        private bool TryAdjustValue(string value, int current, int min, int max, out int result)
+        {
+            string[] parts = (value ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            int number = 0;
+            result = current;
+
+            if (parts.Length == 0)
+                return false;
+
+            if (parts[0] == "Up" || parts[0] == "Down")
+            {
+                // No count means one step, but a count that can't be read is refused
+                if (parts.Length > 1 && !TryReturnNumber(parts[1], out number))
+                    return false;
+
+                int step = Math.Max(1, number);
+                result = parts[0] == "Up" ? current + step : current - step;
+            }
+            else if (parts[0] == "Set")
+            {
+                if (parts.Length < 2 || !TryReturnNumber(parts[1], out number))
+                    return false;
+
+                result = number;
+            }
+            else if (TryReturnNumber(parts[0], out number))
+                result = number;
+            else
+                return false;
+
+            result = Math.Max(min, Math.Min(max, result));
+            return true;
+        }
+
+        // Snapshot of what Vice believes the TV, soundbar and timer are doing, for the phone app
+        public Dictionary<string, object> GetState()
+        {
+            return new Dictionary<string, object>()
+            {
+                { "tvPower", Data.TvPower },
+                { "barPower", Data.BarPower },
+                { "tvVolume", Data.TvVolume },
+                { "tvTargetVolume", TvTargetVolume },
+                { "wooferVolume", Data.SubVolume },
+                { "wooferTargetVolume", SubTargetVolume },
+                { "tvMode", Data.TvMode == 3 ? "Normal" : Data.TvMode == 2 ? "Cinema" : "True Cinema" },
+                { "tvModeChanging", ModeChanging },
+                { "nightMode", Data.NightMode },
+                { "sleepTimerActive", Sleeper.Active },
+                { "sleepTimerMinutes", Sleeper.Timer },
+                { "sleepTimerAction", new[] { "Lock", "Sleep", "Hibernate", "PowerOff" }[Math.Max(0, Math.Min(3, Data.SleepLockValue))] },
+                { "sendingBlocked", PauseCommandBool },
+                { "dropboxPolling", Running }
+            };
+        }
+
+        // sets the PC volume from "Mute", "Up 10", "Down 10" or a number
+        private void VolumeCommand(string Value = "0" )
+        {
+            LogCommand("Volume Control " + Value);
+            try
+            {
                 CoreAudioDevice defaultPlaybackDevice = new CoreAudioController().DefaultPlaybackDevice;
 
+                int Percentage;
                 if (Value == "Mute")
                     Percentage = 0;
-                else if (Value.Split(' ')[0] == "Down")
-                {
-                    double CheckVal = defaultPlaybackDevice.Volume - ReturnNumber(Value.Split(' ')[1]);
-                    if (CheckVal < 0)
-                        CheckVal = 0;
-
-                    defaultPlaybackDevice.Volume = CheckVal;
+                else if (!TryAdjustValue(Value, (int)Math.Round(defaultPlaybackDevice.Volume), 0, 100, out Percentage))
                     return;
-                }
-                else if (Value.Split(' ')[0] == "Up")
-                {
-                    double CheckVal = defaultPlaybackDevice.Volume + ReturnNumber(Value.Split(' ')[1]);
-                    if (CheckVal > 100)
-                        CheckVal = 0;
-
-                    defaultPlaybackDevice.Volume = CheckVal;
-                    return;
-                }
-                else
-                {
-                    Percentage = ReturnNumber(Value);
-
-                    if (Percentage > 100)
-                        Percentage = 100;
-                    else if (Percentage < 0)
-                        Percentage = 0;
-                }
 
                 defaultPlaybackDevice.Volume = Percentage;
             }
@@ -621,7 +767,7 @@ namespace Vice
         // Controls the music playing
         private void MediaCommand(string com)
         {
-            WipeStem("Media Control " + com);
+            LogCommand("Media Control " + com);
 
             if (com == "Next")
             {
@@ -644,19 +790,19 @@ namespace Vice
 
         private void LockCommand()
         {
-            WipeStem("Lock");
+            LogCommand("Lock");
             LockWorkStation();
         }
 
         private void SleepCommand()
         {
-            WipeStem("Sleep");
+            LogCommand("Sleep");
             Application.SetSuspendState(PowerState.Suspend, true, false);
         }
 
         private void PowerCommand()
         {
-            WipeStem("PowerOff");
+            LogCommand("PowerOff");
 
             var psi = new ProcessStartInfo("shutdown", "/s /t 2");
             psi.CreateNoWindow = true;
@@ -666,19 +812,19 @@ namespace Vice
 
         private void HibernateCommand()
         {
-            WipeStem("Hibernate");
+            LogCommand("Hibernate");
             Application.SetSuspendState(PowerState.Hibernate, true, false);
         }
 
         private void TestCommand()
         {
-            WipeStem("Test");
+            LogCommand("Test");
         }
 
         // Types the command word
         private void TypeCommand(string setting)
         {
-            WipeStem("Type Control " + setting);
+            LogCommand("Type Control " + setting);
 
             // Sets the word variables
             string DeciderWord = setting.Split(' ')[0];
@@ -735,11 +881,22 @@ namespace Vice
         private void RemoteCommand(string command, string Args = "", bool Wipe = true)
         {
             if (Wipe)
-                WipeStem("Remote" + command);
+                LogCommand("Remote " + command + " " + Args);
 
-            RemoteWait.WaitOne();
-            RemoteWait.Reset();
+            RemoteLock.Wait();
+            try
+            {
+                RemoteCommandLocked(command, Args);
+            }
+            finally
+            {
+                RemoteLock.Release();
+            }
+        }
 
+        // Body of RemoteCommand, only called while RemoteLock is held
+        private void RemoteCommandLocked(string command, string Args)
+        {
             if (command == "NightMode")
             {
                 SendSerial("BAR B");
@@ -747,7 +904,7 @@ namespace Vice
             }
             else if (command == "Volume")
             {
-                int amount = int.Parse(Args.Split(' ')[1]);
+                int amount = StepAmount(Args);
                 string Direction = Args.Split(' ')[0];
 
                 // Itterates in a loop for n-1 times with continue set true and a timer
@@ -767,7 +924,7 @@ namespace Vice
             }
             else if (command == "Woofer")
             {
-                int amount = int.Parse(Args.Split(' ')[1]);
+                int amount = StepAmount(Args);
                 string Direction = Args.Split(' ')[0];
 
                 // Itterates in a loop for n-1 times with continue set true
@@ -887,19 +1044,116 @@ namespace Vice
                 }
                 else
                 {
-                    Sleeper.Timer = int.Parse(Args);
+                    Sleeper.Timer = ReturnNumber(Args);
 
                     if (!Sleeper.Active)
                         Sleeper.ButtonCom();
                 }
             }
+        }
 
-            RemoteWait.Set();
+        // Remote commands RemoteCommand understands, used to reject typos before they reach the lock
+        private static readonly HashSet<string> RemoteCommandNames = new HashSet<string>()
+        {
+            "NightMode", "Volume", "Woofer", "Power", "Tv Mode", "Bed time"
+        };
+
+        // Reads the step count from arguments like "Up 3", defaulting to one step
+        private int StepAmount(string Args)
+        {
+            string[] parts = (Args ?? "").Split(' ');
+
+            if (parts.Length < 2)
+                return 1;
+
+            int amount = ReturnNumber(parts[1]);
+            return amount < 1 ? 1 : amount;
         }
 
         #endregion Stem Commands
 
         #region Command Methods
+
+        #region Phone API
+
+        private PhoneApiServer PhoneApi;
+
+        // Turns the phone API on or off from the Phone menu
+        public bool PhoneApiOn
+        {
+            get => Data.PhoneApiEnabled;
+            set
+            {
+                Data.PhoneApiEnabled = value;
+                Data.SaveLocal();
+                RestartPhoneApi();
+                NotifyPropertyChanged();
+            }
+        }
+
+        // Starts the API the phone app talks to. On first run it makes a pairing code, and if Windows
+        // hasn't given Vice permission to listen yet it offers to fix that once
+        private void StartPhoneApi(bool offerAccess = false)
+        {
+            if (!Data.PhoneApiEnabled)
+                return;
+
+            if (string.IsNullOrWhiteSpace(Data.PhoneApiToken))
+            {
+                Data.PhoneApiToken = PhoneApiServer.NewToken();
+                Data.SaveLocal();
+            }
+
+            PhoneApi = new PhoneApiServer(Data.PhoneApiPort, Data.PhoneApiToken,
+                (command, value, value2) => ExecuteCommand(command, value, value2),
+                () => GetState(),
+                message => LogEvent(message));
+
+            bool accessDenied;
+            if (PhoneApi.Start(out accessDenied))
+                return;
+
+            PhoneApi = null;
+
+            if (accessDenied && offerAccess &&
+                MessageBox.Show("Vice needs a one-time Windows permission so your phone can reach it over Tailscale. Allow it now?",
+                    "Vice Remote", MessageBoxButtons.YesNo) == DialogResult.Yes &&
+                PhoneApiServer.GrantAccess(Data.PhoneApiPort))
+            {
+                StartPhoneApi();
+            }
+        }
+
+        public void StopPhoneApi()
+        {
+            PhoneApi?.Stop();
+            PhoneApi = null;
+        }
+
+        private void RestartPhoneApi()
+        {
+            StopPhoneApi();
+            StartPhoneApi();
+        }
+
+        // Shows what to type into the Vice Remote app
+        private void ShowPhonePairing()
+        {
+            string status = PhoneApi != null && PhoneApi.IsRunning
+                ? "Running"
+                : Data.PhoneApiEnabled ? "Not running. Try Phone > Allow phone access" : "Turned off";
+
+            MessageBox.Show(
+                "Enter these in the Vice Remote app:\n\n" +
+                "PC address:  " + Environment.MachineName.ToLower() + "\n" +
+                "Port:  " + Data.PhoneApiPort + "\n" +
+                "Pairing code:  " + Data.PhoneApiToken + "\n\n" +
+                "The PC address is this PC's name in Tailscale. Tailscale must be on for both the PC and the phone.\n\n" +
+                "Phone API: " + status,
+                "Vice Remote pairing");
+        }
+
+        #endregion Phone API
 
         public void StopThreadCom()
         {
@@ -929,7 +1183,10 @@ namespace Vice
         public void StopVolumeThread()
         {
             VolumeKiller = true;
-            RemoteWait.WaitOne(200);
+
+            // Gives a step already in progress the chance to finish
+            if (RemoteLock.Wait(200))
+                RemoteLock.Release();
             VolumeThread = null;
         }
 
@@ -1030,20 +1287,18 @@ namespace Vice
 
         public void NightModeCom()
         {
-            RemoteWait.WaitOne();
+            RemoteLock.Wait();
+            try
+            {
+                SendSerial("BAR B");
+                Data.NightMode = !Data.NightMode;
 
-            // Checks no other has passed through at the same time
-            Thread.Sleep(50);
-            RemoteWait.WaitOne();
-
-            RemoteWait.Reset();
-
-            SendSerial("BAR B");
-            Data.NightMode = !Data.NightMode;
-
-            Thread.Sleep(100);
-
-            RemoteWait.Set();
+                Thread.Sleep(100);
+            }
+            finally
+            {
+                RemoteLock.Release();
+            }
         }
 
         public void NightModeStarter()
@@ -1221,7 +1476,7 @@ namespace Vice
             {
                 if (_powerTvCommand == null)
                 {
-                    _powerTvCommand = new RelayCommand(param => RemoteCommand("Power", "TV", false));
+                    _powerTvCommand = new RelayCommand(param => Task.Run(() => RemoteCommand("Power", "TV", false)));
                 }
                 return _powerTvCommand;
             }
@@ -1234,7 +1489,7 @@ namespace Vice
             {
                 if (_powerBarCommand == null)
                 {
-                    _powerBarCommand = new RelayCommand(param => RemoteCommand("Power", "Bar", false));
+                    _powerBarCommand = new RelayCommand(param => Task.Run(() => RemoteCommand("Power", "Bar", false)));
                 }
                 return _powerBarCommand;
             }
@@ -1410,6 +1665,76 @@ namespace Vice
         }
 
         #endregion Remote Buttons
+
+        #region Phone Menu
+
+        private RelayCommand _phoneShowPairing;
+        public ICommand PhoneShowPairing
+        {
+            get
+            {
+                if (_phoneShowPairing == null)
+                {
+                    _phoneShowPairing = new RelayCommand(param => ShowPhonePairing());
+                }
+                return _phoneShowPairing;
+            }
+        }
+
+        private RelayCommand _phoneCopyCode;
+        public ICommand PhoneCopyCode
+        {
+            get
+            {
+                if (_phoneCopyCode == null)
+                {
+                    _phoneCopyCode = new RelayCommand(param => Clipboard.SetText(Data.PhoneApiToken));
+                }
+                return _phoneCopyCode;
+            }
+        }
+
+        private RelayCommand _phoneAllowAccess;
+        public ICommand PhoneAllowAccess
+        {
+            get
+            {
+                if (_phoneAllowAccess == null)
+                {
+                    _phoneAllowAccess = new RelayCommand(param =>
+                    {
+                        if (PhoneApiServer.GrantAccess(Data.PhoneApiPort))
+                            RestartPhoneApi();
+                    });
+                }
+                return _phoneAllowAccess;
+            }
+        }
+
+        private RelayCommand _phoneNewCode;
+        public ICommand PhoneNewCode
+        {
+            get
+            {
+                if (_phoneNewCode == null)
+                {
+                    _phoneNewCode = new RelayCommand(param =>
+                    {
+                        if (MessageBox.Show("Make a new pairing code? Your phone will need the new code before it works again.",
+                            "Vice Remote", MessageBoxButtons.OKCancel) != DialogResult.OK)
+                            return;
+
+                        Data.PhoneApiToken = PhoneApiServer.NewToken();
+                        Data.SaveLocal();
+                        RestartPhoneApi();
+                        ShowPhonePairing();
+                    });
+                }
+                return _phoneNewCode;
+            }
+        }
+
+        #endregion Phone Menu
 
         #endregion Commands
 

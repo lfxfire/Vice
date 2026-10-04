@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Vice listens on plain HTTP on your PC. The app is meant to reach it over Tailscale, which
+    already encrypts everything between the phone and the PC with WireGuard, so plain HTTP is
+    allowed here. Requests also carry the pairing code.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

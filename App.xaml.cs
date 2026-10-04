@@ -20,9 +20,11 @@ namespace Vice
         void App_Startup(object sender, StartupEventArgs e)
         {
             Console.WriteLine("App Started");
-            IconSetup();
 
+            // Hooked up first so a crash during start up still reaches the log
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
+            IconSetup();
 
             MainWindow = new MainWindow();
             MainVM = new MainVM();
@@ -52,7 +54,9 @@ namespace Vice
         private void IconSetup()
         {
             NotifyIcon.Visible = true;
-            NotifyIcon.Icon = new System.Drawing.Icon(@"C:\Users\laure\source\repos\Vice\Resources\Images\Marionette.ico");
+            // Loaded from the icon built into Vice.exe, so it works wherever the project is cloned
+            using (Stream iconStream = GetResourceStream(new Uri("pack://application:,,,/Vice;component/Resources/Images/Marionette.ico")).Stream)
+                NotifyIcon.Icon = new System.Drawing.Icon(iconStream);
             NotifyIcon.ContextMenu = new ContextMenu();
 
             NotifyIcon.ContextMenu.MenuItems.Add(new MenuItem()
@@ -77,6 +81,7 @@ namespace Vice
         {
             MainVM.StopThreadCom();
             MainVM.StopVolumeThread();
+            MainVM.StopPhoneApi();
             MainVM.Sleeper.ForceShutdown();
             MainVM.Data.SaveLocal();
             Current.Shutdown();

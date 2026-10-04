@@ -155,6 +155,13 @@
                     <MenuItem Header="Test" Command="{Binding TestCommandcom}"/>
 
                 </MenuItem>
+                <MenuItem Header="Phone">
+                    <MenuItem Header="Show pairing details" Command="{Binding PhoneShowPairing}"/>
+                    <MenuItem Header="Copy pairing code" Command="{Binding PhoneCopyCode}"/>
+                    <MenuItem Header="Phone API on" IsCheckable="True" IsChecked="{Binding PhoneApiOn}"/>
+                    <MenuItem Header="Allow phone access (admin)" Command="{Binding PhoneAllowAccess}"/>
+                    <MenuItem Header="New pairing code" Command="{Binding PhoneNewCode}"/>
+                </MenuItem>
                 <MenuItem Header="Defaults">
                     <MenuItem Header="Power">
                         <MenuItem Header="TV" Command="{Binding DefaultTVPower}"/>

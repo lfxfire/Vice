@@ -28,6 +28,13 @@ namespace Vice.Models
 
         public bool DefaultStartPolling { get; set; } = true;
 
+        // Phone API, reached over Tailscale. See README.md
+        public bool PhoneApiEnabled { get; set; } = true;
+        public int PhoneApiPort { get; set; } = 8420;
+
+        // Pairing code the phone must send with every request, generated on first run
+        public string PhoneApiToken { get; set; } = "";
+
         private bool _tvPower = true;
         public bool TvPower
         {

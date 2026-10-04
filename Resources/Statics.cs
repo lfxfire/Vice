@@ -17,7 +17,7 @@ namespace Vice.Resources
         public static readonly ObservableCollection<string> NumList = new ObservableCollection<string>()
         {
             "zero", "one", "two", "three", "four", "five", "six",
-            "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "forteen", "fifteen", "sixteen", "seventeen",
+            "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
             "eighteen", "nineteen"
         };
 
